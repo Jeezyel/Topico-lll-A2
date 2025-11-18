@@ -14,17 +14,17 @@ namespace A2.Models
         public string Nome { get; set; }
 
         [Required]
-        [EmailAddress] // Valida o formato do email
+        [EmailAddress(ErrorMessage = "Formato de e-mail inválido.")] // Valida o formato do email
         [StringLength(100)] // Define o tamanho máximo do campo Email
         public string Email { get; set; }
 
         [Required]
         public string SenhaHash { get; set; } // O hash da senha armazenada
 
-        //[ForeignKey("Role")] // Relacionamento de chave estrangeira com a tabela Role
-        //public int RoleID { get; set; }
+        [Required(ErrorMessage = "O ID da Role é obrigatório.")]
+        public int RoleId { get; set; }
 
-        // Navegação para a entidade Role (relacionamento de 1:N)
-       // public Role Role { get; set; }
+        [ForeignKey("RoleId")] // RoleId é a FK
+        public Role? Role { get; set; }
     }
 }
