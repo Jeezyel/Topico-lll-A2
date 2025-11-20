@@ -34,7 +34,7 @@ namespace A2.Models
         public Usuario? Usuario { get; set; }
 
         // Um motorista pode ser responsável por várias rotas.
-        //public ICollection<Rota>? Rotas { get; set; }
+        public ICollection<Rota>? Rotas { get; set; }
 
         // Um motorista pode registrar várias incidências em rotas.
         //public ICollection<IncidenciaRota>? Incidencias { get; set; }

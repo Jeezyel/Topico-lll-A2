@@ -18,6 +18,11 @@ namespace A2.Data
         public DbSet<Motorista> Motoristas { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Role> Roles { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+        public DbSet<EnderecoCliente> EnderecosClientes { get; set; }
+        public DbSet<Pedido> Pedidos { get; set; }
+        public DbSet<ItemPedido> ItensPedido { get; set; }
+        public DbSet<Rota> Rotas { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -30,7 +35,6 @@ namespace A2.Data
                 .HasForeignKey(m => m.VeiculoId)
                 .OnDelete(DeleteBehavior.Cascade); // Se deletar o veículo, deleta as manutenções
 
-            // Motorista -> Usuario (1:1 opcional)
             modelBuilder.Entity<Motorista>()
                 .HasOne(m => m.Usuario)
                 .WithOne()
@@ -40,7 +44,7 @@ namespace A2.Data
             modelBuilder.Entity<Usuario>()
                 .HasOne(u => u.Role)            // Um Usuário TEM UMA Role
                 .WithMany(r => r.Usuarios)      // Uma Role PODE TER MÚLTIPLOS Usuários
-                .HasForeignKey(u => u.RoleId)   // A chave estrangeira está em Usuario.RoleId
+                .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Veiculo>()
@@ -54,6 +58,58 @@ namespace A2.Data
             modelBuilder.Entity<Manutencao>()
                 .Property(m => m.Custo)
                 .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<Pedido>()
+                .Property(p => p.PesoTotalKg)
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<Pedido>()
+                .Property(p => p.VolumeTotalM3) 
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<Pedido>()
+                .HasOne(p => p.Cliente)
+                .WithMany()
+                .HasForeignKey(p => p.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Pedido>()
+                .HasOne(p => p.EnderecoEntrega)
+                .WithMany()
+                .HasForeignKey(p => p.EnderecoEntregaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ItemPedido>()
+                .Property(ip => ip.PesoUnitarioKg) 
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<ItemPedido>()
+                .Property(ip => ip.VolumeUnitarioM3) 
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<ItemPedido>()
+                .HasOne(i => i.Pedido)
+                .WithMany(p => p.ItensPedido) 
+                .HasForeignKey(i => i.PedidoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Rota>()
+                .HasMany(r => r.Pedidos)
+                .WithOne(p => p.Rota)
+                .HasForeignKey(p => p.RotaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<EnderecoCliente>()
+                .HasOne(e => e.Cliente)
+                .WithMany(c => c.Enderecos)
+                .HasForeignKey(e => e.ClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EnderecoCliente>()
+                .Property(e => e.Latitude).HasColumnType("decimal(10,8)");
+
+            modelBuilder.Entity<EnderecoCliente>()
+                .Property(e => e.Longitude).HasColumnType("decimal(11,8)");
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace A2.Models
 {
@@ -39,7 +38,7 @@ namespace A2.Models
 
         public StatusVeiculo Status { get; set; } = StatusVeiculo.Disponivel;
 
-        //public ICollection<Rota>? Rotas { get; set; }
+        public ICollection<Rota>? Rotas { get; set; }
 
         public ICollection<Manutencao>? Manutencoes { get; set; }
     }
