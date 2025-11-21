@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace A2.Models
 {
@@ -15,21 +14,17 @@ namespace A2.Models
 
         [Required]
         public int VeiculoId { get; set; }
-        [JsonIgnore]
         [ForeignKey("VeiculoId")]
         public Veiculo? Veiculo { get; set; }
 
         [Required]
         public int MotoristaId { get; set; }
-        [JsonIgnore]
         [ForeignKey("MotoristaId")]
         public Motorista? Motorista { get; set; }
 
         public DateTime DataRota { get; set; } = DateTime.Now;
         public StatusRota Status { get; set; } = StatusRota.Planejada;
 
-        // Lista de pedidos nesta rota
-        [JsonIgnore]
-        public ICollection<Pedido>? Pedidos { get; set; }
+        public ICollection<RotaPedido>? RotaPedidos { get; set; }
     }
 }

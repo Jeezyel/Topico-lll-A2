@@ -22,7 +22,9 @@ namespace A2.Controllers
             return await _context.Rotas
                 .Include(r => r.Veiculo)
                 .Include(r => r.Motorista)
-                .Include(r => r.Pedidos)
+                .Include(r => r.RotaPedidos)
+                    .ThenInclude(rp => rp.Pedido)
+                // -------------------------------
                 .ToListAsync();
         }
 
@@ -66,15 +68,25 @@ namespace A2.Controllers
             };
 
             _context.Rotas.Add(rota);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); 
+
+
+            int ordemContador = 1;
 
             foreach (var p in pedidos)
             {
-                p.RotaId = rota.Id;
+                var rotaPedido = new RotaPedido
+                {
+                    RotaId = rota.Id,
+                    PedidoId = p.Id,
+                    OrdemEntrega = ordemContador++,
+                    StatusEntrega = "Pendente"
+                };
+                _context.RotaPedidos.Add(rotaPedido);
+
                 p.Status = StatusPedido.EmRota;
                 _context.Entry(p).State = EntityState.Modified;
             }
-
             veiculo.Status = StatusVeiculo.EmRota;
             _context.Entry(veiculo).State = EntityState.Modified;
 
@@ -88,7 +100,6 @@ namespace A2.Controllers
     {
         public int VeiculoId { get; set; }
         public int MotoristaId { get; set; }
-        // CORREÇÃO DO WARNING: Inicializando a lista para não ser nula
         public List<int> PedidosIds { get; set; } = new List<int>();
     }
 }

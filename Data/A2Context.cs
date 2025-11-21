@@ -23,6 +23,13 @@ namespace A2.Data
         public DbSet<Pedido> Pedidos { get; set; }
         public DbSet<ItemPedido> ItensPedido { get; set; }
         public DbSet<Rota> Rotas { get; set; }
+        public DbSet<RotaPedido> RotaPedidos { get; set; }
+        public DbSet<AlertaClimatico> AlertasClimaticos { get; set; }
+        public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
+        public DbSet<IncidenciaRota> IncidenciasRota { get; set; }
+        public DbSet<JanelaHorario> JanelasHorarias { get; set; }
+        public DbSet<LogIntegracao> LogsIntegracao { get; set; }
+        public DbSet<PontoDeParada> PontosDeParada { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -93,11 +100,18 @@ namespace A2.Data
                 .HasForeignKey(i => i.PedidoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Rota>()
-                .HasMany(r => r.Pedidos)
-                .WithOne(p => p.Rota)
-                .HasForeignKey(p => p.RotaId)
-                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<RotaPedido>()
+                .HasKey(rp => new { rp.RotaId, rp.PedidoId });
+
+            modelBuilder.Entity<RotaPedido>()
+                .HasOne(rp => rp.Rota)
+                .WithMany(r => r.RotaPedidos)
+                .HasForeignKey(rp => rp.RotaId);
+
+            modelBuilder.Entity<RotaPedido>()
+                .HasOne(rp => rp.Pedido)
+                .WithMany(p => p.RotaPedidos)
+                .HasForeignKey(rp => rp.PedidoId);
 
             modelBuilder.Entity<EnderecoCliente>()
                 .HasOne(e => e.Cliente)
@@ -110,6 +124,36 @@ namespace A2.Data
 
             modelBuilder.Entity<EnderecoCliente>()
                 .Property(e => e.Longitude).HasColumnType("decimal(11,8)");
+
+            modelBuilder.Entity<AlertaClimatico>()
+                .HasOne(a => a.Rota)
+                .WithMany() // Rota não precisa de lista de alertas se não quiser
+                .HasForeignKey(a => a.RotaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<IncidenciaRota>()
+                .HasOne(i => i.Rota)
+                .WithMany()
+                .HasForeignKey(i => i.RotaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JanelaHorario>()
+                .HasOne(j => j.EnderecoCliente)
+                .WithMany()
+                .HasForeignKey(j => j.EnderecoClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PontoDeParada>()
+                .HasOne(p => p.Rota)
+                .WithMany()
+                .HasForeignKey(p => p.RotaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PontoDeParada>()
+                .Property(p => p.Latitude).HasColumnType("decimal(10,8)");
+
+            modelBuilder.Entity<PontoDeParada>()
+                .Property(p => p.Longitude).HasColumnType("decimal(11,8)");
         }
     }
 }
