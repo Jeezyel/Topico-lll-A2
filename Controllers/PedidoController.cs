@@ -46,7 +46,7 @@ namespace A2.Controllers
             pedido.PesoTotalKg = 0;
             pedido.VolumeTotalM3 = 0;
             pedido.Status = StatusPedido.Pendente;
-            pedido.RotaId = null;
+            //pedido.RotaId = null;
 
             _context.Pedidos.Add(pedido);
             await _context.SaveChangesAsync();
