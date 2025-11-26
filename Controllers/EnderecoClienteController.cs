@@ -1,5 +1,6 @@
 ﻿using A2.Data;
 using A2.Models;
+using A2.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,12 @@ namespace A2.Controllers
     public class EnderecoClientesController : ControllerBase
     {
         private readonly A2Context _context;
+        private readonly IGeocodingService _geocodingService;
 
-        public EnderecoClientesController(A2Context context)
+        public EnderecoClientesController(A2Context context, IGeocodingService geocodingService)
         {
             _context = context;
+            _geocodingService = geocodingService;
         }
 
         [HttpGet]
@@ -35,12 +38,30 @@ namespace A2.Controllers
         [HttpPost]
         public async Task<ActionResult<EnderecoCliente>> PostEndereco(EnderecoCliente endereco)
         {
-            // TODO: Aqui entraria a chamada para a API Nominatim para preencher Latitude e Longitude
-            // endereco.Latitude = ...
-            // endereco.Longitude = ...
+            // Validação básica se o cliente existe
+            if (!await _context.Clientes.AnyAsync(c => c.Id == endereco.ClienteId))
+            {
+                return BadRequest("Cliente não encontrado.");
+            }
+
+            // --- INTEGRAÇÃO COM NOMINATIM ---
+            // Chama o serviço para tentar obter as coordenadas
+            var coordenadas = await _geocodingService.ObterCoordenadasAsync(endereco);
+
+            if (coordenadas.HasValue)
+            {
+                // Se deu certo, preenche os campos
+                endereco.Latitude = coordenadas.Value.Latitude;
+                endereco.Longitude = coordenadas.Value.Longitude;
+            }
+            else
+            {
+                Console.WriteLine("Aviso: Não foi possível geocodificar o endereço. Salvando com lat/lon zerados.");
+            }
 
             _context.EnderecosClientes.Add(endereco);
             await _context.SaveChangesAsync();
+
             return CreatedAtAction("GetEndereco", new { id = endereco.Id }, endereco);
         }
 

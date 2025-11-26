@@ -1,9 +1,11 @@
+using A2.Data;
+using A2.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
-using A2.Data;
-using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<A2Context>(options =>
     options.UseSqlServer(connectionString));
+
+builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<IGeocodingService, NominatimGeocodingService>();
+
+builder.Services.AddScoped<IWeatherService, OpenWeatherService>();
 
 // Add services to the container.
 
@@ -35,7 +43,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(x =>
+{
+    // Esta é a linha mágica que impede o loop infinito
+    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

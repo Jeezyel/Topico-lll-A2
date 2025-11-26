@@ -4,6 +4,7 @@ using A2.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace A2.Migrations
 {
     [DbContext(typeof(A2Context))]
-    partial class A2ContextModelSnapshot : ModelSnapshot
+    [Migration("20251126162144_AddTabelasFaltantesCorrigido")]
+    partial class AddTabelasFaltantesCorrigido
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -603,7 +606,7 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.AlertaClimatico", b =>
                 {
                     b.HasOne("A2.Models.Rota", "Rota")
-                        .WithMany("AlertasClimaticos")
+                        .WithMany()
                         .HasForeignKey("RotaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -795,8 +798,6 @@ namespace A2.Migrations
 
             modelBuilder.Entity("A2.Models.Rota", b =>
                 {
-                    b.Navigation("AlertasClimaticos");
-
                     b.Navigation("RotaPedidos");
                 });
 

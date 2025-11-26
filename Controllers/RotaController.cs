@@ -1,5 +1,6 @@
-﻿using A2.Models;
-using A2.Data;
+﻿using A2.Data;
+using A2.Models;
+using A2.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,12 @@ namespace A2.Controllers
     public class RotaController : ControllerBase
     {
         private readonly A2Context _context;
+        private readonly IWeatherService _weatherService;
 
-        public RotaController(A2Context context)
+        public RotaController(A2Context context, IWeatherService weatherService)
         {
             _context = context;
+            _weatherService = weatherService;
         }
 
         [HttpGet]
@@ -91,6 +94,36 @@ namespace A2.Controllers
             _context.Entry(veiculo).State = EntityState.Modified;
 
             await _context.SaveChangesAsync();
+
+            var primeiroPedidoId = request.PedidosIds.FirstOrDefault();
+            if (primeiroPedidoId != 0)
+            {
+                // Busca o endereço de entrega deste pedido (precisa do Include para trazer os dados)
+                var pedidoComEndereco = await _context.Pedidos
+                    .Include(p => p.EnderecoEntrega)
+                    .AsNoTracking() // Boa prática para leitura
+                    .FirstOrDefaultAsync(p => p.Id == primeiroPedidoId);
+
+                // Verifica se o endereço existe e tem coordenadas válidas
+                if (pedidoComEndereco?.EnderecoEntrega != null &&
+                    pedidoComEndereco.EnderecoEntrega.Latitude != 0 &&
+                    pedidoComEndereco.EnderecoEntrega.Longitude != 0)
+                {
+                    var alerta = await _weatherService.VerificarClimaAsync(
+                    pedidoComEndereco.EnderecoEntrega.Latitude,
+                    pedidoComEndereco.EnderecoEntrega.Longitude
+);
+                    if (alerta != null)
+                    {
+                        alerta.RotaId = rota.Id;
+                        _context.AlertasClimaticos.Add(alerta);
+                        await _context.SaveChangesAsync();
+
+                        if (rota.AlertasClimaticos == null) rota.AlertasClimaticos = new List<AlertaClimatico>();
+                        rota.AlertasClimaticos.Add(alerta);
+                    }
+                }
+            }
 
             return CreatedAtAction("GetRotas", new { id = rota.Id }, rota);
         }
