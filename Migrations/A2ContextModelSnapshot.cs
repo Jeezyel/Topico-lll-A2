@@ -22,6 +22,34 @@ namespace A2.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("A2.Models.AlertaClimatico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("RotaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Severidade")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TipoAlerta")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RotaId");
+
+                    b.ToTable("AlertasClimaticos");
+                });
+
             modelBuilder.Entity("A2.Models.Cliente", b =>
                 {
                     b.Property<int>("Id")
@@ -55,6 +83,39 @@ namespace A2.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Clientes");
+                });
+
+            modelBuilder.Entity("A2.Models.ConfiguracaoSistema", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Chave")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConfiguracoesSistema");
                 });
 
             modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
@@ -115,6 +176,37 @@ namespace A2.Migrations
                     b.ToTable("EnderecosClientes");
                 });
 
+            modelBuilder.Entity("A2.Models.IncidenciaRota", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DataHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("MotoristaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RotaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MotoristaId");
+
+                    b.HasIndex("RotaId");
+
+                    b.ToTable("IncidenciasRota");
+                });
+
             modelBuilder.Entity("A2.Models.ItemPedido", b =>
                 {
                     b.Property<int>("Id")
@@ -149,6 +241,61 @@ namespace A2.Migrations
                     b.HasIndex("PedidoId");
 
                     b.ToTable("ItensPedido");
+                });
+
+            modelBuilder.Entity("A2.Models.JanelaHorario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DiaSemana")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<int>("EnderecoClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("HoraFim")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan>("HoraInicio")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnderecoClienteId");
+
+                    b.ToTable("JanelasHorarias");
+                });
+
+            modelBuilder.Entity("A2.Models.LogIntegracao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("DataHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LogsIntegracao");
                 });
 
             modelBuilder.Entity("A2.Models.Manutencao", b =>
@@ -256,9 +403,6 @@ namespace A2.Migrations
                     b.Property<decimal>("PesoTotalKg")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<int?>("RotaId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -271,9 +415,39 @@ namespace A2.Migrations
 
                     b.HasIndex("EnderecoEntregaId");
 
+                    b.ToTable("Pedidos");
+                });
+
+            modelBuilder.Entity("A2.Models.PontoDeParada", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EnderecoClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Latitude")
+                        .HasColumnType("decimal(10,8)");
+
+                    b.Property<decimal>("Longitude")
+                        .HasColumnType("decimal(11,8)");
+
+                    b.Property<int>("OrdemParada")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RotaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnderecoClienteId");
+
                     b.HasIndex("RotaId");
 
-                    b.ToTable("Pedidos");
+                    b.ToTable("PontosDeParada");
                 });
 
             modelBuilder.Entity("A2.Models.Role", b =>
@@ -321,6 +495,31 @@ namespace A2.Migrations
                     b.HasIndex("VeiculoId");
 
                     b.ToTable("Rotas");
+                });
+
+            modelBuilder.Entity("A2.Models.RotaPedido", b =>
+                {
+                    b.Property<int>("RotaId")
+                        .HasColumnType("int")
+                        .HasColumnOrder(0);
+
+                    b.Property<int>("PedidoId")
+                        .HasColumnType("int")
+                        .HasColumnOrder(1);
+
+                    b.Property<int>("OrdemEntrega")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatusEntrega")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("RotaId", "PedidoId");
+
+                    b.HasIndex("PedidoId");
+
+                    b.ToTable("RotaPedidos");
                 });
 
             modelBuilder.Entity("A2.Models.Usuario", b =>
@@ -401,6 +600,17 @@ namespace A2.Migrations
                     b.ToTable("Veiculos");
                 });
 
+            modelBuilder.Entity("A2.Models.AlertaClimatico", b =>
+                {
+                    b.HasOne("A2.Models.Rota", "Rota")
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rota");
+                });
+
             modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
                 {
                     b.HasOne("A2.Models.Cliente", "Cliente")
@@ -412,6 +622,25 @@ namespace A2.Migrations
                     b.Navigation("Cliente");
                 });
 
+            modelBuilder.Entity("A2.Models.IncidenciaRota", b =>
+                {
+                    b.HasOne("A2.Models.Motorista", "Motorista")
+                        .WithMany()
+                        .HasForeignKey("MotoristaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("A2.Models.Rota", "Rota")
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Motorista");
+
+                    b.Navigation("Rota");
+                });
+
             modelBuilder.Entity("A2.Models.ItemPedido", b =>
                 {
                     b.HasOne("A2.Models.Pedido", "Pedido")
@@ -421,6 +650,17 @@ namespace A2.Migrations
                         .IsRequired();
 
                     b.Navigation("Pedido");
+                });
+
+            modelBuilder.Entity("A2.Models.JanelaHorario", b =>
+                {
+                    b.HasOne("A2.Models.EnderecoCliente", "EnderecoCliente")
+                        .WithMany()
+                        .HasForeignKey("EnderecoClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnderecoCliente");
                 });
 
             modelBuilder.Entity("A2.Models.Manutencao", b =>
@@ -458,14 +698,26 @@ namespace A2.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("A2.Models.Rota", "Rota")
-                        .WithMany("Pedidos")
-                        .HasForeignKey("RotaId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Cliente");
 
                     b.Navigation("EnderecoEntrega");
+                });
+
+            modelBuilder.Entity("A2.Models.PontoDeParada", b =>
+                {
+                    b.HasOne("A2.Models.EnderecoCliente", "EnderecoCliente")
+                        .WithMany()
+                        .HasForeignKey("EnderecoClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("A2.Models.Rota", "Rota")
+                        .WithMany()
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnderecoCliente");
 
                     b.Navigation("Rota");
                 });
@@ -487,6 +739,25 @@ namespace A2.Migrations
                     b.Navigation("Motorista");
 
                     b.Navigation("Veiculo");
+                });
+
+            modelBuilder.Entity("A2.Models.RotaPedido", b =>
+                {
+                    b.HasOne("A2.Models.Pedido", "Pedido")
+                        .WithMany("RotaPedidos")
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("A2.Models.Rota", "Rota")
+                        .WithMany("RotaPedidos")
+                        .HasForeignKey("RotaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Rota");
                 });
 
             modelBuilder.Entity("A2.Models.Usuario", b =>
@@ -513,6 +784,8 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.Pedido", b =>
                 {
                     b.Navigation("ItensPedido");
+
+                    b.Navigation("RotaPedidos");
                 });
 
             modelBuilder.Entity("A2.Models.Role", b =>
@@ -522,7 +795,7 @@ namespace A2.Migrations
 
             modelBuilder.Entity("A2.Models.Rota", b =>
                 {
-                    b.Navigation("Pedidos");
+                    b.Navigation("RotaPedidos");
                 });
 
             modelBuilder.Entity("A2.Models.Veiculo", b =>
