@@ -127,7 +127,7 @@ namespace A2.Data
 
             modelBuilder.Entity<AlertaClimatico>()
                 .HasOne(a => a.Rota)
-                .WithMany() // Rota não precisa de lista de alertas se não quiser
+                .WithMany(r => r.AlertasClimaticos)
                 .HasForeignKey(a => a.RotaId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -135,7 +135,7 @@ namespace A2.Data
                 .HasOne(i => i.Rota)
                 .WithMany()
                 .HasForeignKey(i => i.RotaId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<JanelaHorario>()
                 .HasOne(j => j.EnderecoCliente)

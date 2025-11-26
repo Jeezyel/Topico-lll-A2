@@ -26,5 +26,6 @@ namespace A2.Models
         public StatusRota Status { get; set; } = StatusRota.Planejada;
 
         public ICollection<RotaPedido>? RotaPedidos { get; set; }
+        public ICollection<AlertaClimatico>? AlertasClimaticos { get; set; }
     }
 }
