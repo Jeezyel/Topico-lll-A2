@@ -111,8 +111,8 @@ namespace A2.Controllers
                 {
                     var alerta = await _weatherService.VerificarClimaAsync(
                     pedidoComEndereco.EnderecoEntrega.Latitude,
-                    pedidoComEndereco.EnderecoEntrega.Longitude
-);
+                    pedidoComEndereco.EnderecoEntrega.Longitude);
+
                     if (alerta != null)
                     {
                         alerta.RotaId = rota.Id;
@@ -127,6 +127,72 @@ namespace A2.Controllers
 
             return CreatedAtAction("GetRotas", new { id = rota.Id }, rota);
         }
+        [HttpPut("{rotaId}/pedidos/{pedidoId}/entregar")]
+        public async Task<IActionResult> MarcarPedidoComoEntregue(int rotaId, int pedidoId)
+        {
+            // 1. Busca o vínculo na tabela intermediária
+            var rotaPedido = await _context.RotaPedidos
+                .FirstOrDefaultAsync(rp => rp.RotaId == rotaId && rp.PedidoId == pedidoId);
+
+            if (rotaPedido == null)
+            {
+                return NotFound("O vínculo entre esta rota e este pedido não foi encontrado.");
+            }
+
+            // 2. Validação: já foi entregue?
+            // (Assumindo que "Pendente" é o status inicial que definimos no PostRota)
+            if (rotaPedido.StatusEntrega == "Entregue")
+            {
+                return BadRequest("Este pedido já está marcado como entregue nesta rota.");
+            }
+
+            // 3. Atualiza o status na tabela intermediária
+            rotaPedido.StatusEntrega = "Entregue";
+            // Se necessário, pode adicionar data/hora da entrega aqui se tiver criado o campo na model
+            // rotaPedido.DataHoraEntrega = DateTime.Now; 
+
+            // 4. Atualiza o status do pedido principal
+            var pedidoPrincipal = await _context.Pedidos.FindAsync(pedidoId);
+            if (pedidoPrincipal != null)
+            {
+                pedidoPrincipal.Status = StatusPedido.Entregue;
+                _context.Entry(pedidoPrincipal).State = EntityState.Modified;
+            }
+
+            // Salva as alterações da entrega atual
+            await _context.SaveChangesAsync();
+
+            bool existemPendencias = await _context.RotaPedidos
+                .AnyAsync(rp => rp.RotaId == rotaId && rp.StatusEntrega != "Entregue");
+
+            // Se NÃO existem pendências (ou seja, tudo foi entregue), finaliza a rota e o veículo
+            if (!existemPendencias)
+            {
+                // Busca a rota e o veículo associado
+                var rota = await _context.Rotas
+                    .Include(r => r.Veiculo)
+                    .FirstOrDefaultAsync(r => r.Id == rotaId);
+
+                if (rota != null)
+                {
+                    // Marca rota como concluída
+                    rota.Status = StatusRota.Concluida;
+                    _context.Entry(rota).State = EntityState.Modified;
+
+                    // Libera o veículo
+                    if (rota.Veiculo != null)
+                    {
+                        rota.Veiculo.Status = StatusVeiculo.Disponivel;
+                        _context.Entry(rota.Veiculo).State = EntityState.Modified;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return NoContent();
+        }
+
     }
 
     public class RotaRequest
