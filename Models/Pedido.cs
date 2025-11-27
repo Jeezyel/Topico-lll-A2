@@ -5,7 +5,7 @@ namespace A2.Models
 {
     public enum StatusPedido
     {
-        Pendente, EmRota, Entregue, Cancelado
+        Pendente = 0 , EmRota = 1, Entregue= 2, Cancelado = 3
     }
 
     public class Pedido
