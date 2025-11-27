@@ -1,5 +1,6 @@
-﻿using A2.Models;
-using A2.Data;
+﻿using A2.Data;
+using A2.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace A2.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ItemPedidoController : ControllerBase
     {
         private readonly A2Context _context;
@@ -14,6 +16,32 @@ namespace A2.Controllers
         public ItemPedidoController(A2Context context)
         {
             _context = context;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ItemPedido>>> GetItensPedido([FromQuery] int? pedidoId)
+        {
+            var query = _context.ItensPedido.AsQueryable();
+
+            if (pedidoId.HasValue)
+            {
+                query = query.Where(i => i.PedidoId == pedidoId.Value);
+            }
+
+            return await query.ToListAsync();
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ItemPedido>> GetItemPedido(int id)
+        {
+            var itemPedido = await _context.ItensPedido.FindAsync(id);
+
+            if (itemPedido == null)
+            {
+                return NotFound();
+            }
+
+            return itemPedido;
         }
 
         [HttpPost]
@@ -24,6 +52,7 @@ namespace A2.Controllers
 
             _context.ItensPedido.Add(item);
 
+            // Recalculate totals
             pedido.PesoTotalKg += (item.PesoUnitarioKg * item.Quantidade);
             pedido.VolumeTotalM3 += (item.VolumeUnitarioM3 * item.Quantidade);
 
@@ -31,7 +60,78 @@ namespace A2.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(item);
+            return CreatedAtAction(nameof(GetItemPedido), new { id = item.Id }, item);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutItemPedido(int id, ItemPedido itemPedido)
+        {
+            if (id != itemPedido.Id)
+            {
+                return BadRequest();
+            }
+            
+            var originalItem = await _context.ItensPedido.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
+            if (originalItem == null) return NotFound();
+
+            var pedido = await _context.Pedidos.FindAsync(itemPedido.PedidoId);
+            if (pedido == null) return NotFound("Pedido não encontrado.");
+
+            // Recalculate totals
+            pedido.PesoTotalKg -= (originalItem.PesoUnitarioKg * originalItem.Quantidade);
+            pedido.VolumeTotalM3 -= (originalItem.VolumeUnitarioM3 * originalItem.Quantidade);
+            pedido.PesoTotalKg += (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
+            pedido.VolumeTotalM3 += (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
+            
+            _context.Entry(pedido).State = EntityState.Modified;
+            _context.Entry(itemPedido).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ItemPedidoExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteItemPedido(int id)
+        {
+            var itemPedido = await _context.ItensPedido.FindAsync(id);
+            if (itemPedido == null)
+            {
+                return NotFound();
+            }
+
+            var pedido = await _context.Pedidos.FindAsync(itemPedido.PedidoId);
+            if (pedido != null)
+            {
+                // Recalculate totals
+                pedido.PesoTotalKg -= (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
+                pedido.VolumeTotalM3 -= (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
+                _context.Entry(pedido).State = EntityState.Modified;
+            }
+
+            _context.ItensPedido.Remove(itemPedido);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool ItemPedidoExists(int id)
+        {
+            return _context.ItensPedido.Any(e => e.Id == id);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using A2.Data;
 using A2.Models;
 using BCrypt.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ namespace A2.Controllers
 
         // GET: api/Usuario
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
         {
             // Inclui a Role na resposta para sabermos o perfil de cada usuário
@@ -28,6 +30,7 @@ namespace A2.Controllers
 
         // GET: api/Usuario/{id}
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
             var usuario = await _context.Usuarios
@@ -77,26 +80,38 @@ namespace A2.Controllers
         {
             if (id != usuario.Id)
             {
-                return BadRequest();
+                return BadRequest("O ID na URL não corresponde ao ID do usuário fornecido.");
             }
 
-            // Carregamos o usuário atual do banco (sem rastrear) para comparar as senhas
-            var usuarioAtual = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
-            if (usuarioAtual == null)
+            var existingUsuario = await _context.Usuarios
+                                                .AsNoTracking() // Carrega para não rastrear e poder anexar 'usuario' depois
+                                                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (existingUsuario == null)
             {
-                return NotFound();
+                return NotFound($"Usuário com ID {id} não encontrado.");
             }
 
-            // Lógica inteligente para atualização de senha:
-            // Se a senha enviada no JSON for DIFERENTE do hash que já está no banco,
-            // assumimos que é uma NOVA senha "pura" que precisa ser criptografada.
-            if (usuario.SenhaHash != usuarioAtual.SenhaHash)
+            // Validar se a Role existe se o RoleId for alterado
+            if (existingUsuario.RoleId != usuario.RoleId && !await _context.Roles.AnyAsync(r => r.Id == usuario.RoleId))
             {
+                return BadRequest("Role (Perfil) inválida ou inexistente. Crie a Role primeiro.");
+            }
+
+            // Acompanha a entidade 'usuario' e marca como modificada
+            _context.Entry(usuario).State = EntityState.Modified;
+
+            // Lógica para atualização de senha:
+            if (!string.IsNullOrWhiteSpace(usuario.SenhaHash))
+            {
+                // Assume que a SenhaHash recebida é a senha em texto puro que precisa ser criptografada.
                 usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(usuario.SenhaHash);
             }
-            // Se forem iguais, significa que a senha não foi alterada, e o hash antigo é mantido.
-
-            _context.Entry(usuario).State = EntityState.Modified;
+            else
+            {
+                // Se a SenhaHash não foi fornecida, mantém o hash existente do banco.
+                _context.Entry(usuario).Property(u => u.SenhaHash).IsModified = false;
+            }
 
             try
             {
@@ -119,6 +134,7 @@ namespace A2.Controllers
 
         // DELETE: api/Usuario/{id}
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
             var usuario = await _context.Usuarios.FindAsync(id);

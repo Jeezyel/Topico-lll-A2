@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace A2.Models
 {
@@ -9,11 +10,9 @@ namespace A2.Models
         // pode-se usar [Key] + [Column(Order = ...)] OU configurar no OnModelCreating.
         // Aqui usaremos o estilo com múltiplas [Key].
 
-        [Key, Column(Order = 0)]
         [Required(ErrorMessage = "O ID da Rota é obrigatório.")]
         public int RotaId { get; set; }
 
-        [Key, Column(Order = 1)]
         [Required(ErrorMessage = "O ID do Pedido é obrigatório.")]
         public int PedidoId { get; set; }
 
@@ -26,9 +25,11 @@ namespace A2.Models
 
         // Navegações
         [ForeignKey(nameof(RotaId))]
+        [JsonIgnore]
         public Rota? Rota { get; set; }
 
         [ForeignKey(nameof(PedidoId))]
+        [JsonIgnore]
         public Pedido? Pedido { get; set; }
     }
 }

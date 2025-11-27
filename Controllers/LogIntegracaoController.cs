@@ -1,5 +1,6 @@
 ﻿using A2.Data;
 using A2.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace A2.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class LogIntegracaoController : ControllerBase
     {
         private readonly A2Context _context;

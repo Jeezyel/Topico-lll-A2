@@ -1,6 +1,7 @@
 ﻿// using Microsoft.AspNetCore.Authorization; // Para controle de acesso por roles
 using A2.Data;
 using A2.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace A2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    // [Authorize(Roles = "Administrador, Gerente")] // Apenas administradores e gerentes podem gerenciar motoristas
+    [Authorize]
     public class MotoristaController : ControllerBase
     {
         private readonly A2Context _context;
@@ -64,7 +65,7 @@ namespace A2.Controllers
                     return BadRequest("Role 'Motorista' não encontrada no sistema. Cadastre-a primeiro.");
                 }
 
-                motorista.Usuario.SenhaHash = motorista.Usuario.SenhaHash;
+                motorista.Usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(motorista.Usuario.SenhaHash);
                 motorista.Usuario.RoleId = roleMotorista.Id;
                 motorista.Usuario.Role = roleMotorista; 
 
@@ -83,19 +84,75 @@ namespace A2.Controllers
         {
             if (id != motorista.Id)
             {
-                return BadRequest();
+                return BadRequest("O ID na URL não corresponde ao ID do motorista fornecido.");
             }
 
-            if (await _context.Motoristas.AnyAsync(m => m.CPF == motorista.CPF && m.Id != motorista.Id))
+            var existingMotorista = await _context.Motoristas
+                                                .Include(m => m.Usuario) // Inclui o usuário para possível atualização
+                                                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (existingMotorista == null)
+            {
+                return NotFound($"Motorista com ID {id} não encontrado.");
+            }
+
+            // Validação de CPF e CNH únicos para outros motoristas
+            if (await _context.Motoristas.AnyAsync(m => m.CPF == motorista.CPF && m.Id != id))
             {
                 return BadRequest("CPF já cadastrado para outro motorista.");
             }
-            if (await _context.Motoristas.AnyAsync(m => m.CNH == motorista.CNH && m.Id != motorista.Id))
+            if (await _context.Motoristas.AnyAsync(m => m.CNH == motorista.CNH && m.Id != id))
             {
                 return BadRequest("CNH já cadastrada para outro motorista.");
             }
 
-            _context.Entry(motorista).State = EntityState.Modified;
+            // Atualiza as propriedades escalares do motorista existente
+            _context.Entry(existingMotorista).CurrentValues.SetValues(motorista);
+
+            // === Lógica para atualização do Usuário associado ===
+            if (motorista.Usuario != null)
+            {
+                if (existingMotorista.Usuario == null)
+                {
+                    // Se não havia usuário e um está sendo fornecido, cria um novo
+                    var roleMotorista = await _context.Roles.FirstOrDefaultAsync(r => r.Nome == "Motorista");
+                    if (roleMotorista == null)
+                    {
+                        return BadRequest("Role 'Motorista' não encontrada no sistema. Cadastre-a primeiro.");
+                    }
+
+                    var newUser = new Usuario
+                    {
+                        Nome = motorista.Nome, // Ou motorista.Usuario.Nome, dependendo da regra
+                        Email = motorista.Usuario.Email,
+                        SenhaHash = BCrypt.Net.BCrypt.HashPassword(motorista.Usuario.SenhaHash),
+                        RoleId = roleMotorista.Id,
+                        Role = roleMotorista
+                    };
+                    _context.Usuarios.Add(newUser);
+                    existingMotorista.Usuario = newUser;
+                }
+                else
+                {
+                    // Se já havia usuário, atualiza suas propriedades
+                    existingMotorista.Usuario.Nome = motorista.Usuario.Nome;
+                    existingMotorista.Usuario.Email = motorista.Usuario.Email;
+
+                    // Apenas atualiza a senha se uma nova senha for fornecida
+                    if (!string.IsNullOrWhiteSpace(motorista.Usuario.SenhaHash) && 
+                        !BCrypt.Net.BCrypt.Verify(motorista.Usuario.SenhaHash, existingMotorista.Usuario.SenhaHash)) // Only hash if password changed
+                    {
+                        existingMotorista.Usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(motorista.Usuario.SenhaHash);
+                    }
+                    _context.Entry(existingMotorista.Usuario).State = EntityState.Modified;
+                }
+            } else if (existingMotorista.Usuario != null) {
+                // Se um usuário existia e não foi fornecido na atualização, pode-se decidir removê-lo
+                // Ou manter, definindo UsuarioId como null no Motorista e removendo o usuário
+                _context.Usuarios.Remove(existingMotorista.Usuario);
+                existingMotorista.UsuarioId = null;
+            }
+
 
             try
             {
@@ -123,6 +180,11 @@ namespace A2.Controllers
             if (motorista == null)
             {
                 return NotFound();
+            }
+
+            if (motorista.Usuario != null)
+            {
+                _context.Usuarios.Remove(motorista.Usuario);
             }
 
             _context.Motoristas.Remove(motorista);

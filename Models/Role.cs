@@ -12,6 +12,7 @@ namespace A2.Models
         [StringLength(50)]
         public string Nome { get; set; } // "Administrador", "Gerente", "Motorista"
 
+        [JsonIgnore]
         public ICollection<Usuario>? Usuarios { get; set; }
     }
 }

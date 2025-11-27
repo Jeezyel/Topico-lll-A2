@@ -13,6 +13,7 @@ namespace A2.Models
         public int ClienteId { get; set; }
 
         [ForeignKey("ClienteId")]
+        [JsonIgnore]
         public Cliente? Cliente { get; set; }
 
         [Required(ErrorMessage = "O CEP é obrigatório.")]
@@ -42,11 +43,8 @@ namespace A2.Models
         [StringLength(2)]
         public string UF { get; set; }
 
-        // Campos para Latitude/Longitude (Nominatim)
-        [Column(TypeName = "decimal(10,8)")]
         public decimal Latitude { get; set; }
 
-        [Column(TypeName = "decimal(11,8)")]
         public decimal Longitude { get; set; }
     }
 }

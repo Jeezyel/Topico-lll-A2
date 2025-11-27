@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace A2.Migrations
 {
     [DbContext(typeof(A2Context))]
-    [Migration("20251127153848_AdicionarSeedData")]
-    partial class AdicionarSeedData
+    [Migration("20251127204240_BotaDado")]
+    partial class BotaDado
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -83,20 +83,14 @@ namespace A2.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Clientes");
+                    b.HasIndex("UsuarioId");
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CNPJ = "00000000000000",
-                            Email = "contato@alfa.com",
-                            NomeContato = "Maria Silva",
-                            NomeEmpresa = "Distribuidora Alfa",
-                            Telefone = "1133445566"
-                        });
+                    b.ToTable("Clientes");
                 });
 
             modelBuilder.Entity("A2.Models.ConfiguracaoSistema", b =>
@@ -130,16 +124,6 @@ namespace A2.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ConfiguracoesSistema");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            ApiNome = "WeatherAPI",
-                            Chave = "WEATHER_API_KEY",
-                            Endpoint = "https://api.clima.com/v1",
-                            Valor = "xyz123abc"
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
@@ -198,22 +182,6 @@ namespace A2.Migrations
                     b.HasIndex("ClienteId");
 
                     b.ToTable("EnderecosClientes");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Bairro = "Centro",
-                            CEP = "01001000",
-                            Cidade = "São Paulo",
-                            ClienteId = 1,
-                            Complemento = "Galpão A",
-                            Latitude = -23.550520m,
-                            Logradouro = "Rua Principal",
-                            Longitude = -46.633308m,
-                            Numero = "100",
-                            UF = "SP"
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.IncidenciaRota", b =>
@@ -281,28 +249,6 @@ namespace A2.Migrations
                     b.HasIndex("PedidoId");
 
                     b.ToTable("ItensPedido");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CodigoProduto = "PROD001",
-                            Descricao = "Caixa de Eletrônicos",
-                            PedidoId = 1,
-                            PesoUnitarioKg = 40.00m,
-                            Quantidade = 10,
-                            VolumeUnitarioM3 = 0.40m
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CodigoProduto = "PROD005",
-                            Descricao = "Pallet de Roupas",
-                            PedidoId = 1,
-                            PesoUnitarioKg = 20.00m,
-                            Quantidade = 5,
-                            VolumeUnitarioM3 = 0.20m
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.JanelaHorario", b =>
@@ -440,18 +386,6 @@ namespace A2.Migrations
                         .HasFilter("[UsuarioId] IS NOT NULL");
 
                     b.ToTable("Motoristas");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CNH = "12345678901",
-                            CPF = "11122233344",
-                            Email = "joao@empresa.com",
-                            Nome = "João Motorista",
-                            Telefone = "999887766",
-                            UsuarioId = 2
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.Pedido", b =>
@@ -490,19 +424,6 @@ namespace A2.Migrations
                     b.HasIndex("EnderecoEntregaId");
 
                     b.ToTable("Pedidos");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            ClienteId = 1,
-                            DataCriacao = new DateTime(2025, 11, 26, 10, 0, 0, 0, DateTimeKind.Unspecified),
-                            DataLimiteEntrega = new DateTime(2025, 12, 5, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            EnderecoEntregaId = 1,
-                            PesoTotalKg = 500.00m,
-                            Status = 0,
-                            VolumeTotalM3 = 5.00m
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.PontoDeParada", b =>
@@ -535,17 +456,6 @@ namespace A2.Migrations
                     b.HasIndex("RotaId");
 
                     b.ToTable("PontosDeParada");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            EnderecoClienteId = 1,
-                            Latitude = -23.550520m,
-                            Longitude = -46.633308m,
-                            OrdemParada = 1,
-                            RotaId = 1
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.Role", b =>
@@ -564,23 +474,6 @@ namespace A2.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Roles");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Nome = "Administrador"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Nome = "Motorista"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Nome = "Cliente"
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.Rota", b =>
@@ -610,27 +503,15 @@ namespace A2.Migrations
                     b.HasIndex("VeiculoId");
 
                     b.ToTable("Rotas");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            DataRota = new DateTime(2025, 11, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            MotoristaId = 1,
-                            Status = 0,
-                            VeiculoId = 1
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.RotaPedido", b =>
                 {
                     b.Property<int>("RotaId")
-                        .HasColumnType("int")
-                        .HasColumnOrder(0);
+                        .HasColumnType("int");
 
                     b.Property<int>("PedidoId")
-                        .HasColumnType("int")
-                        .HasColumnOrder(1);
+                        .HasColumnType("int");
 
                     b.Property<int>("OrdemEntrega")
                         .HasColumnType("int");
@@ -645,15 +526,6 @@ namespace A2.Migrations
                     b.HasIndex("PedidoId");
 
                     b.ToTable("RotaPedidos");
-
-                    b.HasData(
-                        new
-                        {
-                            RotaId = 1,
-                            PedidoId = 1,
-                            OrdemEntrega = 1,
-                            StatusEntrega = "Aguardando"
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.Usuario", b =>
@@ -686,24 +558,6 @@ namespace A2.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("Usuarios");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Email = "admin@empresa.com",
-                            Nome = "Admin Sistema",
-                            RoleId = 1,
-                            SenhaHash = "hashed_admin_password"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Email = "joao@empresa.com",
-                            Nome = "João Motorista",
-                            RoleId = 2,
-                            SenhaHash = "hashed_joao_password"
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.Veiculo", b =>
@@ -741,8 +595,8 @@ namespace A2.Migrations
 
                     b.Property<string>("Placa")
                         .IsRequired()
-                        .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -750,21 +604,6 @@ namespace A2.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Veiculos");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            AnoFabricacao = 2020,
-                            CapacidadeCarga = 4500.00m,
-                            CapacidadeVolume = 25.00m,
-                            DataProximaManutencao = new DateTime(2026, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DataUltimaManutencao = new DateTime(2025, 10, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Marca = "Ford",
-                            Modelo = "Cargo 816",
-                            Placa = "ABC1234",
-                            Status = 1
-                        });
                 });
 
             modelBuilder.Entity("A2.Models.AlertaClimatico", b =>
@@ -776,6 +615,15 @@ namespace A2.Migrations
                         .IsRequired();
 
                     b.Navigation("Rota");
+                });
+
+            modelBuilder.Entity("A2.Models.Cliente", b =>
+                {
+                    b.HasOne("A2.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
@@ -798,7 +646,7 @@ namespace A2.Migrations
                         .IsRequired();
 
                     b.HasOne("A2.Models.Rota", "Rota")
-                        .WithMany()
+                        .WithMany("Incidencias")
                         .HasForeignKey("RotaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -963,6 +811,8 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.Rota", b =>
                 {
                     b.Navigation("AlertasClimaticos");
+
+                    b.Navigation("Incidencias");
 
                     b.Navigation("RotaPedidos");
                 });

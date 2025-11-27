@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace A2.Models
 {
@@ -24,9 +25,11 @@ namespace A2.Models
 
         // Navegação
         [ForeignKey(nameof(RotaId))]
+        [JsonIgnore]
         public Rota? Rota { get; set; }
 
         [ForeignKey(nameof(MotoristaId))]
+        [JsonIgnore]
         public Motorista? Motorista { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace A2.Models
 {
@@ -22,6 +23,7 @@ namespace A2.Models
         public TimeSpan HoraFim { get; set; }
 
         [ForeignKey(nameof(EnderecoClienteId))] // FK para EnderecoCliente
+        [JsonIgnore]
         public EnderecoCliente? EnderecoCliente { get; set; }
     }
 }

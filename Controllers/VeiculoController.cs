@@ -1,5 +1,6 @@
-﻿using A2.Models;
-using A2.Data;
+﻿using A2.Data;
+using A2.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 // using Microsoft.AspNetCore.Authorization; // Para controle de acesso por roles
@@ -53,6 +54,7 @@ namespace A2.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<Veiculo>> PostVeiculo(Veiculo veiculo)
         {
             if (await _context.Veiculos.AnyAsync(v => v.Placa == veiculo.Placa))
@@ -71,6 +73,7 @@ namespace A2.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> PutVeiculo(int id, Veiculo veiculo)
         {
             if (id != veiculo.Id)
@@ -112,6 +115,7 @@ namespace A2.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteVeiculo(int id)
         {
             var veiculo = await _context.Veiculos.FindAsync(id);

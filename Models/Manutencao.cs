@@ -13,6 +13,7 @@ namespace A2.Models
         public int VeiculoId { get; set; }
 
         [ForeignKey("VeiculoId")]
+        [JsonIgnore]
         public Veiculo? Veiculo { get; set; }
 
         [Required]
@@ -28,7 +29,6 @@ namespace A2.Models
         [StringLength(500, ErrorMessage = "A descrição não pode exceder 500 caracteres.")]
         public string Descricao { get; set; }
 
-        [Column(TypeName = "decimal(10,2)")]
         public decimal Custo { get; set; }
 
         [StringLength(100)]

@@ -23,11 +23,9 @@ namespace A2.Models
         public int Quantidade { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(10,2)")]
         public decimal PesoUnitarioKg { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(10,2)")]
         public decimal VolumeUnitarioM3 { get; set; }
 
         [StringLength(100)]

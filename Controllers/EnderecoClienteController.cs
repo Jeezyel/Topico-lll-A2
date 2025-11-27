@@ -1,6 +1,7 @@
-﻿using A2.Data;
+using A2.Data;
 using A2.Models;
 using A2.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace A2.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class EnderecoClientesController : ControllerBase
     {
         private readonly A2Context _context;
@@ -20,9 +22,16 @@ namespace A2.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<EnderecoCliente>>> GetEnderecos()
+        public async Task<ActionResult<IEnumerable<EnderecoCliente>>> GetEnderecos([FromQuery] int? clienteId)
         {
-            return await _context.EnderecosClientes.Include(e => e.Cliente).ToListAsync();
+            var query = _context.EnderecosClientes.AsQueryable();
+
+            if (clienteId.HasValue)
+            {
+                query = query.Where(e => e.ClienteId == clienteId.Value);
+            }
+
+            return await query.Include(e => e.Cliente).ToListAsync();
         }
 
         [HttpGet("{id}")]
@@ -68,14 +77,67 @@ namespace A2.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutEndereco(int id, EnderecoCliente endereco)
         {
-            if (id != endereco.Id) return BadRequest();
-            _context.Entry(endereco).State = EntityState.Modified;
-            try { await _context.SaveChangesAsync(); }
+            if (id != endereco.Id)
+            {
+                return BadRequest("O ID na URL não corresponde ao ID do endereço fornecido.");
+            }
+
+            var existingEndereco = await _context.EnderecosClientes.FindAsync(id);
+            if (existingEndereco == null)
+            {
+                return NotFound($"Endereço com ID {id} não encontrado.");
+            }
+
+            // Validação se o cliente associado ainda existe (se ClienteId foi alterado ou mesmo se manteve)
+            if (!await _context.Clientes.AnyAsync(c => c.Id == endereco.ClienteId))
+            {
+                return BadRequest("Cliente associado não encontrado.");
+            }
+
+            // Detectar se houve mudança em campos que afetam a geocodificação
+            bool shouldReGeocode = existingEndereco.CEP != endereco.CEP ||
+                                   existingEndereco.Logradouro != endereco.Logradouro ||
+                                   existingEndereco.Numero != endereco.Numero ||
+                                   existingEndereco.Bairro != endereco.Bairro ||
+                                   existingEndereco.Cidade != endereco.Cidade ||
+                                   existingEndereco.UF != endereco.UF;
+
+            // Atualiza as propriedades do endereço existente
+            _context.Entry(existingEndereco).CurrentValues.SetValues(endereco);
+
+            if (shouldReGeocode)
+            {
+                var coordenadas = await _geocodingService.ObterCoordenadasAsync(endereco);
+                if (coordenadas.HasValue)
+                {
+                    existingEndereco.Latitude = coordenadas.Value.Latitude;
+                    existingEndereco.Longitude = coordenadas.Value.Longitude;
+                }
+                else
+                {
+                    Console.WriteLine($"Aviso: Não foi possível re-geocodificar o endereço {endereco.Id}. Mantendo lat/lon anteriores ou zerados.");
+                    // Opcional: manter os valores antigos ou zerar, dependendo da regra de negócio
+                    existingEndereco.Latitude = 0; 
+                    existingEndereco.Longitude = 0;
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.EnderecosClientes.Any(e => e.Id == id)) return NotFound();
-                else throw;
+                if (!EnderecoClienteExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
             }
+
             return NoContent();
         }
 
@@ -83,10 +145,18 @@ namespace A2.Controllers
         public async Task<IActionResult> DeleteEndereco(int id)
         {
             var endereco = await _context.EnderecosClientes.FindAsync(id);
-            if (endereco == null) return NotFound();
+            if (endereco == null)
+            {
+                return NotFound();
+            }
             _context.EnderecosClientes.Remove(endereco);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private bool EnderecoClienteExists(int id)
+        {
+            return _context.EnderecosClientes.Any(e => e.Id == id);
         }
     }
 }

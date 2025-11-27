@@ -1,13 +1,16 @@
 ﻿using A2.Data;
 using A2.Models;
 using A2.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims; 
 
 namespace A2.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RotaController : ControllerBase
     {
         private readonly A2Context _context;
@@ -27,8 +30,61 @@ namespace A2.Controllers
                 .Include(r => r.Motorista)
                 .Include(r => r.RotaPedidos)
                     .ThenInclude(rp => rp.Pedido)
-                // -------------------------------
                 .ToListAsync();
+        }
+
+        [HttpGet("minhas-rotas")]
+        [Authorize(Roles = "Motorista")] // Apenas motoristas podem acessar
+        public async Task<ActionResult<IEnumerable<Rota>>> GetMinhasRotas()
+        {
+            // 1. Obter o ID do usuário logado a partir do token
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdStr))
+            {
+                return Unauthorized("Não foi possível identificar o usuário.");
+            }
+            var userId = int.Parse(userIdStr);
+
+            // 2. Encontrar o motorista associado a esse usuário
+            var motorista = await _context.Motoristas.FirstOrDefaultAsync(m => m.UsuarioId == userId);
+            if (motorista == null)
+            {
+                return NotFound("Nenhum perfil de motorista encontrado para este usuário.");
+            }
+
+            // 3. Buscar as rotas apenas para este motorista
+            return await _context.Rotas
+                .Where(r => r.MotoristaId == motorista.Id)
+                .Include(r => r.Veiculo)
+                .Include(r => r.Motorista)
+                .Include(r => r.RotaPedidos)
+                    .ThenInclude(rp => rp.Pedido)
+                        .ThenInclude(p => p.Cliente)
+                .Include(r => r.AlertasClimaticos)
+                .Include(r => r.Incidencias)
+                .OrderByDescending(r => r.DataRota)
+                .ToListAsync();
+        }
+
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Rota>> GetRota(int id)
+        {
+            var rota = await _context.Rotas
+                .Include(r => r.Veiculo)
+                .Include(r => r.Motorista)
+                .Include(r => r.RotaPedidos)
+                    .ThenInclude(rp => rp.Pedido)
+                .Include(r => r.AlertasClimaticos)
+                .Include(r => r.Incidencias)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (rota == null)
+            {
+                return NotFound();
+            }
+
+            return rota;
         }
 
         [HttpPost]
@@ -125,12 +181,92 @@ namespace A2.Controllers
                 }
             }
 
-            return CreatedAtAction("GetRotas", new { id = rota.Id }, rota);
+            return CreatedAtAction("GetRota", new { id = rota.Id }, rota);
         }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutRota(int id, Rota rota)
+        {
+            if (id != rota.Id)
+            {
+                return BadRequest("O ID na URL não corresponde ao ID da rota fornecida.");
+            }
+
+            var existingRota = await _context.Rotas
+                                            .AsNoTracking()
+                                            .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (existingRota == null)
+            {
+                return NotFound($"Rota com ID {id} não encontrada.");
+            }
+
+            // Validar se o status da rota permite alteração
+            if (existingRota.Status != StatusRota.Planejada)
+            {
+                return BadRequest("Não é possível alterar uma rota que não está 'Planejada'.");
+            }
+            
+            // Validar VeiculoId e MotoristaId
+            if (!await _context.Veiculos.AnyAsync(v => v.Id == rota.VeiculoId))
+            {
+                return BadRequest("Veículo associado não encontrado.");
+            }
+            if (!await _context.Motoristas.AnyAsync(m => m.Id == rota.MotoristaId))
+            {
+                return BadRequest("Motorista associado não encontrado.");
+            }
+
+            // Anexar a entidade e marcar como modificada
+            _context.Entry(rota).State = EntityState.Modified;
+            
+            // Garante que não se tente alterar as coleções diretamente por aqui,
+            // que devem ser gerenciadas por endpoints específicos (ex: adicionar/remover pedidos da rota)
+            _context.Entry(rota).Property(r => r.RotaPedidos).IsModified = false;
+            _context.Entry(rota).Property(r => r.AlertasClimaticos).IsModified = false;
+
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!RotaExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRota(int id)
+        {
+            var rota = await _context.Rotas.FindAsync(id);
+            if (rota == null)
+            {
+                return NotFound();
+            }
+
+            if (rota.Status == StatusRota.EmAndamento)
+            {
+                return BadRequest("Não é possível excluir uma rota que está em andamento.");
+            }
+
+            _context.Rotas.Remove(rota);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
         [HttpPut("{rotaId}/pedidos/{pedidoId}/entregar")]
         public async Task<IActionResult> MarcarPedidoComoEntregue(int rotaId, int pedidoId)
         {
-            // 1. Busca o vínculo na tabela intermediária
             var rotaPedido = await _context.RotaPedidos
                 .FirstOrDefaultAsync(rp => rp.RotaId == rotaId && rp.PedidoId == pedidoId);
 
@@ -139,19 +275,13 @@ namespace A2.Controllers
                 return NotFound("O vínculo entre esta rota e este pedido não foi encontrado.");
             }
 
-            // 2. Validação: já foi entregue?
-            // (Assumindo que "Pendente" é o status inicial que definimos no PostRota)
             if (rotaPedido.StatusEntrega == "Entregue")
             {
                 return BadRequest("Este pedido já está marcado como entregue nesta rota.");
             }
 
-            // 3. Atualiza o status na tabela intermediária
             rotaPedido.StatusEntrega = "Entregue";
-            // Se necessário, pode adicionar data/hora da entrega aqui se tiver criado o campo na model
-            // rotaPedido.DataHoraEntrega = DateTime.Now; 
 
-            // 4. Atualiza o status do pedido principal
             var pedidoPrincipal = await _context.Pedidos.FindAsync(pedidoId);
             if (pedidoPrincipal != null)
             {
@@ -159,27 +289,22 @@ namespace A2.Controllers
                 _context.Entry(pedidoPrincipal).State = EntityState.Modified;
             }
 
-            // Salva as alterações da entrega atual
             await _context.SaveChangesAsync();
 
             bool existemPendencias = await _context.RotaPedidos
                 .AnyAsync(rp => rp.RotaId == rotaId && rp.StatusEntrega != "Entregue");
 
-            // Se NÃO existem pendências (ou seja, tudo foi entregue), finaliza a rota e o veículo
             if (!existemPendencias)
             {
-                // Busca a rota e o veículo associado
                 var rota = await _context.Rotas
                     .Include(r => r.Veiculo)
                     .FirstOrDefaultAsync(r => r.Id == rotaId);
 
                 if (rota != null)
                 {
-                    // Marca rota como concluída
                     rota.Status = StatusRota.Concluida;
                     _context.Entry(rota).State = EntityState.Modified;
 
-                    // Libera o veículo
                     if (rota.Veiculo != null)
                     {
                         rota.Veiculo.Status = StatusVeiculo.Disponivel;
@@ -190,9 +315,14 @@ namespace A2.Controllers
                 }
             }
 
+            // 3. O ERRO CS0161 ERA PORQUE FALTAVA ESTA LINHA NO FINAL:
             return NoContent();
         }
 
+        private bool RotaExists(int id)
+        {
+            return _context.Rotas.Any(e => e.Id == id);
+        }
     }
 
     public class RotaRequest

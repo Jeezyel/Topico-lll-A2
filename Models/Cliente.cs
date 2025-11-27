@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace A2.Models
 {
@@ -26,6 +27,13 @@ namespace A2.Models
         [StringLength(100)]
         public string? Email { get; set; }
 
+        // Link to a user account for login
+        public int? UsuarioId { get; set; }
+        [ForeignKey("UsuarioId")]
+        [JsonIgnore]
+        public Usuario? Usuario { get; set; }
+
+        [JsonIgnore]
         public ICollection<EnderecoCliente>? Enderecos { get; set; }
     }
 }

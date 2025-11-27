@@ -9,7 +9,7 @@ namespace A2.Models
         public int Id { get; set; }
 
         [Required(ErrorMessage = "A placa é obrigatória.")]
-        [StringLength(7, MinimumLength = 7, ErrorMessage = "A placa deve ter 7 caracteres.")]
+        [StringLength(10, MinimumLength = 10, ErrorMessage = "A placa deve ter 10 caracteres.")]
         public string Placa { get; set; }
 
         [Required]
@@ -24,11 +24,9 @@ namespace A2.Models
         public int AnoFabricacao { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(10,2)")]
         public decimal CapacidadeCarga { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(10,2)")]
         public decimal CapacidadeVolume { get; set; }
 
         public DateTime DataUltimaManutencao { get; set; }

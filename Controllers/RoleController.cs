@@ -1,5 +1,6 @@
-﻿using A2.Models;
-using A2.Data;
+﻿using A2.Data;
+using A2.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 // using Microsoft.AspNetCore.Authorization; // Para controle de acesso por roles
@@ -8,7 +9,7 @@ namespace A2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    // [Authorize(Roles = "Administrador")] // Apenas administradores podem gerenciar roles
+    //[Authorize]
     public class RoleController : ControllerBase
     {
         private readonly A2Context _context;

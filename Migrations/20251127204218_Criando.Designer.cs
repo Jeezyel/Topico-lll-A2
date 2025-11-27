@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace A2.Migrations
 {
     [DbContext(typeof(A2Context))]
-    [Migration("20251126175447_AddListaAlertasRota")]
-    partial class AddListaAlertasRota
+    [Migration("20251127204218_Criando")]
+    partial class Criando
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -83,7 +83,12 @@ namespace A2.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
 
                     b.ToTable("Clientes");
                 });
@@ -503,12 +508,10 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.RotaPedido", b =>
                 {
                     b.Property<int>("RotaId")
-                        .HasColumnType("int")
-                        .HasColumnOrder(0);
+                        .HasColumnType("int");
 
                     b.Property<int>("PedidoId")
-                        .HasColumnType("int")
-                        .HasColumnOrder(1);
+                        .HasColumnType("int");
 
                     b.Property<int>("OrdemEntrega")
                         .HasColumnType("int");
@@ -592,8 +595,8 @@ namespace A2.Migrations
 
                     b.Property<string>("Placa")
                         .IsRequired()
-                        .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -612,6 +615,15 @@ namespace A2.Migrations
                         .IsRequired();
 
                     b.Navigation("Rota");
+                });
+
+            modelBuilder.Entity("A2.Models.Cliente", b =>
+                {
+                    b.HasOne("A2.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
@@ -634,7 +646,7 @@ namespace A2.Migrations
                         .IsRequired();
 
                     b.HasOne("A2.Models.Rota", "Rota")
-                        .WithMany()
+                        .WithMany("Incidencias")
                         .HasForeignKey("RotaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -799,6 +811,8 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.Rota", b =>
                 {
                     b.Navigation("AlertasClimaticos");
+
+                    b.Navigation("Incidencias");
 
                     b.Navigation("RotaPedidos");
                 });
