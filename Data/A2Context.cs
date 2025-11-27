@@ -189,8 +189,8 @@ namespace A2.Data
 
             // --- 2. USUARIOS (Usuários) ---
             modelBuilder.Entity<Usuario>().HasData(
-                new { Id = 1, Nome = "Admin Sistema", Email = "admin@empresa.com", SenhaHash = "hashed_admin_password", RoleId = 1 },
-                new { Id = 2, Nome = "João Motorista", Email = "joao@empresa.com", SenhaHash = "hashed_joao_password", RoleId = 2 }
+                new { Id = 1, Nome = "Admin Sistema", Email = "admin@empresa.com", SenhaHash = "$2a$11$3uUxrlz1tta0xvpSY5q0UuSzcNZvzgWEL757lW6pggLXUYUq0eFoC", RoleId = 1 },// senha = 1234
+                new { Id = 2, Nome = "João Motorista", Email = "joao@empresa.com", SenhaHash = "$2a$11$3uUxrlz1tta0xvpSY5q0UuSzcNZvzgWEL757lW6pggLXUYUq0eFoC", RoleId = 2 }// senha = 1234
             );
 
             // --- 3. MOTORISTAS ---
