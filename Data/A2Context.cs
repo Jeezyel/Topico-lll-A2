@@ -35,10 +35,6 @@ namespace A2.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // =================================================================
-            // CONFIGURAÇÕES DE RELACIONAMENTOS E TIPOS DE COLUNAS (SEU CÓDIGO)
-            // =================================================================
-
             // Veiculo -> Manutencao (1:N)
             modelBuilder.Entity<Manutencao>()
                 .HasOne(m => m.Veiculo)
