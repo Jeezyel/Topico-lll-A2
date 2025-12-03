@@ -95,11 +95,20 @@ namespace A2.Controllers
                 return BadRequest("Endereço de entrega não encontrado.");
             }
 
-            pedido.PesoTotalKg = 0;
-            pedido.VolumeTotalM3 = 0;
-            pedido.Status = StatusPedido.Pendente;
-            //pedido.RotaId = null;
+            // Recalcula o peso e volume totais com base nos itens
+            if (pedido.ItensPedido != null && pedido.ItensPedido.Any())
+            {
+                pedido.PesoTotalKg = pedido.ItensPedido.Sum(i => i.PesoUnitarioKg * i.Quantidade);
+                pedido.VolumeTotalM3 = pedido.ItensPedido.Sum(i => i.VolumeUnitarioM3 * i.Quantidade);
+            } else {
+                pedido.PesoTotalKg = 0;
+                pedido.VolumeTotalM3 = 0;
+            }
 
+            pedido.Status = StatusPedido.Pendente;
+            
+            // O Entity Framework irá automaticamente associar os ItensPedido ao novo Pedido
+            // e preencher o PedidoId em cada item quando SaveChangesAsync for chamado.
             _context.Pedidos.Add(pedido);
             await _context.SaveChangesAsync();
 
@@ -153,29 +162,49 @@ namespace A2.Controllers
 
             // --- Lógica para atualização de ItensPedido ---
             // Remove itens antigos que não estão na nova lista
-            foreach (var existingItem in trackedPedido.ItensPedido.ToList())
+            if(trackedPedido.ItensPedido != null)
             {
-                if (!pedido.ItensPedido.Any(newItem => newItem.Id == existingItem.Id))
+                foreach (var existingItem in trackedPedido.ItensPedido.ToList())
                 {
-                    _context.ItensPedido.Remove(existingItem);
+                    if (pedido.ItensPedido == null || !pedido.ItensPedido.Any(newItem => newItem.Id == existingItem.Id))
+                    {
+                        _context.ItensPedido.Remove(existingItem);
+                    }
                 }
             }
 
+
             // Atualiza itens existentes e adiciona novos itens
-            foreach (var newItem in pedido.ItensPedido)
+            if(pedido.ItensPedido != null)
             {
-                var existingItem = trackedPedido.ItensPedido.FirstOrDefault(i => i.Id == newItem.Id);
-                if (existingItem != null)
+                foreach (var newItem in pedido.ItensPedido)
                 {
-                    // Atualiza item existente
-                    _context.Entry(existingItem).CurrentValues.SetValues(newItem);
+                    var existingItem = trackedPedido.ItensPedido?.FirstOrDefault(i => i.Id == newItem.Id && newItem.Id != 0);
+                    if (existingItem != null)
+                    {
+                        // Atualiza item existente
+                        _context.Entry(existingItem).CurrentValues.SetValues(newItem);
+                    }
+                    else
+                    {
+                        // Adiciona novo item
+                        newItem.PedidoId = trackedPedido.Id; // Garante que o PedidoId está correto
+                        trackedPedido.ItensPedido.Add(newItem);
+                    }
                 }
-                else
-                {
-                    // Adiciona novo item
-                    newItem.PedidoId = trackedPedido.Id; // Garante que o PedidoId está correto
-                    trackedPedido.ItensPedido.Add(newItem);
-                }
+            }
+
+
+            // Recalcula totais
+            if (trackedPedido.ItensPedido != null && trackedPedido.ItensPedido.Any())
+            {
+                trackedPedido.PesoTotalKg = trackedPedido.ItensPedido.Sum(i => i.PesoUnitarioKg * i.Quantidade);
+                trackedPedido.VolumeTotalM3 = trackedPedido.ItensPedido.Sum(i => i.VolumeUnitarioM3 * i.Quantidade);
+            }
+            else
+            {
+                trackedPedido.PesoTotalKg = 0;
+                trackedPedido.VolumeTotalM3 = 0;
             }
 
 
