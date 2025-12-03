@@ -1,4 +1,4 @@
-﻿using A2.Data;
+using A2.Data;
 using A2.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,19 +18,14 @@ namespace A2.Controllers
             _context = context;
         }
 
+        // GET: api/ItemPedido
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ItemPedido>>> GetItensPedido([FromQuery] int? pedidoId)
+        public async Task<ActionResult<IEnumerable<ItemPedido>>> GetItensPedido()
         {
-            var query = _context.ItensPedido.AsQueryable();
-
-            if (pedidoId.HasValue)
-            {
-                query = query.Where(i => i.PedidoId == pedidoId.Value);
-            }
-
-            return await query.ToListAsync();
+            return await _context.ItensPedido.ToListAsync();
         }
 
+        // GET: api/ItemPedido/5
         [HttpGet("{id}")]
         public async Task<ActionResult<ItemPedido>> GetItemPedido(int id)
         {
@@ -44,25 +39,20 @@ namespace A2.Controllers
             return itemPedido;
         }
 
+        // POST: api/ItemPedido
         [HttpPost]
-        public async Task<ActionResult<ItemPedido>> PostItem(ItemPedido item)
+        public async Task<ActionResult<ItemPedido>> PostItemPedido(ItemPedido itemPedido)
         {
-            var pedido = await _context.Pedidos.FindAsync(item.PedidoId);
-            if (pedido == null) return NotFound("Pedido não encontrado.");
-
-            _context.ItensPedido.Add(item);
-
-            // Recalculate totals
-            pedido.PesoTotalKg += (item.PesoUnitarioKg * item.Quantidade);
-            pedido.VolumeTotalM3 += (item.VolumeUnitarioM3 * item.Quantidade);
-
-            _context.Entry(pedido).State = EntityState.Modified;
-
+            // O PedidoId pode ser nulo na criação
+            itemPedido.PedidoId = null;
+            
+            _context.ItensPedido.Add(itemPedido);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetItemPedido), new { id = item.Id }, item);
+            return CreatedAtAction("GetItemPedido", new { id = itemPedido.Id }, itemPedido);
         }
 
+        // PUT: api/ItemPedido/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutItemPedido(int id, ItemPedido itemPedido)
         {
@@ -70,20 +60,7 @@ namespace A2.Controllers
             {
                 return BadRequest();
             }
-            
-            var originalItem = await _context.ItensPedido.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
-            if (originalItem == null) return NotFound();
 
-            var pedido = await _context.Pedidos.FindAsync(itemPedido.PedidoId);
-            if (pedido == null) return NotFound("Pedido não encontrado.");
-
-            // Recalculate totals
-            pedido.PesoTotalKg -= (originalItem.PesoUnitarioKg * originalItem.Quantidade);
-            pedido.VolumeTotalM3 -= (originalItem.VolumeUnitarioM3 * originalItem.Quantidade);
-            pedido.PesoTotalKg += (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
-            pedido.VolumeTotalM3 += (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
-            
-            _context.Entry(pedido).State = EntityState.Modified;
             _context.Entry(itemPedido).State = EntityState.Modified;
 
             try
@@ -105,6 +82,7 @@ namespace A2.Controllers
             return NoContent();
         }
 
+        // DELETE: api/ItemPedido/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItemPedido(int id)
         {
@@ -114,13 +92,9 @@ namespace A2.Controllers
                 return NotFound();
             }
 
-            var pedido = await _context.Pedidos.FindAsync(itemPedido.PedidoId);
-            if (pedido != null)
+            if (itemPedido.PedidoId != null)
             {
-                // Recalculate totals
-                pedido.PesoTotalKg -= (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
-                pedido.VolumeTotalM3 -= (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
-                _context.Entry(pedido).State = EntityState.Modified;
+                return BadRequest("Não é possível excluir um item que já está associado a um pedido.");
             }
 
             _context.ItensPedido.Remove(itemPedido);

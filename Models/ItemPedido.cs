@@ -9,8 +9,7 @@ namespace A2.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        public int PedidoId { get; set; }
+        public int? PedidoId { get; set; }
         [JsonIgnore]
         [ForeignKey("PedidoId")]
         public Pedido? Pedido { get; set; }

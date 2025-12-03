@@ -81,34 +81,39 @@ namespace A2.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Pedido>> PostPedido(Pedido pedido)
+        public async Task<ActionResult<Pedido>> PostPedido(A2.DTO.PedidoCreateDto pedidoDto)
         {
-            // Validate ClienteId
-            if (!await _context.Clientes.AnyAsync(c => c.Id == pedido.ClienteId))
+            if (!await _context.Clientes.AnyAsync(c => c.Id == pedidoDto.ClienteId))
             {
                 return BadRequest("Cliente não encontrado.");
             }
 
-            // Validate EnderecoEntregaId
-            if (!await _context.EnderecosClientes.AnyAsync(e => e.Id == pedido.EnderecoEntregaId))
+            if (!await _context.EnderecosClientes.AnyAsync(e => e.Id == pedidoDto.EnderecoEntregaId))
             {
                 return BadRequest("Endereço de entrega não encontrado.");
             }
 
-            // Recalcula o peso e volume totais com base nos itens
-            if (pedido.ItensPedido != null && pedido.ItensPedido.Any())
-            {
-                pedido.PesoTotalKg = pedido.ItensPedido.Sum(i => i.PesoUnitarioKg * i.Quantidade);
-                pedido.VolumeTotalM3 = pedido.ItensPedido.Sum(i => i.VolumeUnitarioM3 * i.Quantidade);
-            } else {
-                pedido.PesoTotalKg = 0;
-                pedido.VolumeTotalM3 = 0;
-            }
+            var itens = await _context.ItensPedido
+                                      .Where(i => pedidoDto.ItensPedidoIds.Contains(i.Id))
+                                      .ToListAsync();
 
-            pedido.Status = StatusPedido.Pendente;
+            if (itens.Count != pedidoDto.ItensPedidoIds.Count)
+            {
+                return BadRequest("Um ou mais itens do pedido não foram encontrados.");
+            }
             
-            // O Entity Framework irá automaticamente associar os ItensPedido ao novo Pedido
-            // e preencher o PedidoId em cada item quando SaveChangesAsync for chamado.
+            var pedido = new Pedido
+            {
+                ClienteId = pedidoDto.ClienteId,
+                EnderecoEntregaId = pedidoDto.EnderecoEntregaId,
+                DataLimiteEntrega = pedidoDto.DataLimiteEntrega,
+                Status = StatusPedido.Pendente,
+                ItensPedido = itens
+            };
+
+            pedido.PesoTotalKg = pedido.ItensPedido.Sum(i => i.PesoUnitarioKg * i.Quantidade);
+            pedido.VolumeTotalM3 = pedido.ItensPedido.Sum(i => i.VolumeUnitarioM3 * i.Quantidade);
+
             _context.Pedidos.Add(pedido);
             await _context.SaveChangesAsync();
 
@@ -116,86 +121,37 @@ namespace A2.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPedido(int id, Pedido pedido)
+        public async Task<IActionResult> PutPedido(int id, A2.DTO.PedidoUpdateDto pedidoDto)
         {
-            if (id != pedido.Id)
+            if (id != pedidoDto.Id)
             {
                 return BadRequest("O ID na URL não corresponde ao ID do pedido fornecido.");
             }
 
-            var existingPedido = await _context.Pedidos
-                                                .Include(p => p.ItensPedido)
-                                                .AsNoTracking() // Use AsNoTracking para evitar problemas de tracking ao anexar 'pedido'
-                                                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (existingPedido == null)
-            {
-                return NotFound($"Pedido com ID {id} não encontrado.");
-            }
-
-            // Status check (retaining original business logic)
-            if (existingPedido.Status != StatusPedido.Pendente)
-            {
-                return BadRequest("Não é possível alterar um pedido que já está em Rota ou foi Entregue.");
-            }
-
-            // Validate ClienteId if it's being changed
-            if (existingPedido.ClienteId != pedido.ClienteId && !await _context.Clientes.AnyAsync(c => c.Id == pedido.ClienteId))
-            {
-                return BadRequest("Novo Cliente associado não encontrado.");
-            }
-
-            // Validate EnderecoEntregaId if it's being changed
-            if (existingPedido.EnderecoEntregaId != pedido.EnderecoEntregaId && !await _context.EnderecosClientes.AnyAsync(e => e.Id == pedido.EnderecoEntregaId))
-            {
-                return BadRequest("Novo Endereço de entrega associado não encontrado.");
-            }
-            
-            // Re-fetch the entity to track it, but apply changes from 'pedido'
             var trackedPedido = await _context.Pedidos
                                             .Include(p => p.ItensPedido)
                                             .FirstOrDefaultAsync(p => p.Id == id);
             
-            if(trackedPedido == null) return NotFound(); // Should not happen given existingPedido != null
+            if(trackedPedido == null) return NotFound();
 
-            _context.Entry(trackedPedido).CurrentValues.SetValues(pedido);
-
-            // --- Lógica para atualização de ItensPedido ---
-            // Remove itens antigos que não estão na nova lista
-            if(trackedPedido.ItensPedido != null)
+            if (trackedPedido.Status != StatusPedido.Pendente)
             {
-                foreach (var existingItem in trackedPedido.ItensPedido.ToList())
-                {
-                    if (pedido.ItensPedido == null || !pedido.ItensPedido.Any(newItem => newItem.Id == existingItem.Id))
-                    {
-                        _context.ItensPedido.Remove(existingItem);
-                    }
-                }
+                return BadRequest("Não é possível alterar um pedido que já está em Rota ou foi Entregue.");
+            }
+            
+            _context.Entry(trackedPedido).CurrentValues.SetValues(pedidoDto);
+
+            var novosItens = await _context.ItensPedido
+                                           .Where(i => pedidoDto.ItensPedidoIds.Contains(i.Id))
+                                           .ToListAsync();
+
+            if (novosItens.Count != pedidoDto.ItensPedidoIds.Count)
+            {
+                return BadRequest("Um ou mais itens do pedido não foram encontrados.");
             }
 
+            trackedPedido.ItensPedido = novosItens;
 
-            // Atualiza itens existentes e adiciona novos itens
-            if(pedido.ItensPedido != null)
-            {
-                foreach (var newItem in pedido.ItensPedido)
-                {
-                    var existingItem = trackedPedido.ItensPedido?.FirstOrDefault(i => i.Id == newItem.Id && newItem.Id != 0);
-                    if (existingItem != null)
-                    {
-                        // Atualiza item existente
-                        _context.Entry(existingItem).CurrentValues.SetValues(newItem);
-                    }
-                    else
-                    {
-                        // Adiciona novo item
-                        newItem.PedidoId = trackedPedido.Id; // Garante que o PedidoId está correto
-                        trackedPedido.ItensPedido.Add(newItem);
-                    }
-                }
-            }
-
-
-            // Recalcula totais
             if (trackedPedido.ItensPedido != null && trackedPedido.ItensPedido.Any())
             {
                 trackedPedido.PesoTotalKg = trackedPedido.ItensPedido.Sum(i => i.PesoUnitarioKg * i.Quantidade);
@@ -206,7 +162,6 @@ namespace A2.Controllers
                 trackedPedido.PesoTotalKg = 0;
                 trackedPedido.VolumeTotalM3 = 0;
             }
-
 
             try
             {
