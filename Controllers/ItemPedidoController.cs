@@ -1,4 +1,4 @@
-﻿using A2.Data;
+using A2.Data;
 using A2.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,7 +76,7 @@ namespace A2.Controllers
             {
                 return BadRequest();
             }
-            
+
             var originalItem = await _context.ItensPedido.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
             if (originalItem == null) return NotFound();
 
@@ -88,7 +88,7 @@ namespace A2.Controllers
             pedido.VolumeTotalM3 -= (originalItem.VolumeUnitarioM3 * (originalItem.Quantidade ?? 0));
             pedido.PesoTotalKg += (itemPedido.PesoUnitarioKg * (itemPedido.Quantidade ?? 0));
             pedido.VolumeTotalM3 += (itemPedido.VolumeUnitarioM3 * (itemPedido.Quantidade ?? 0));
-            
+
             _context.Entry(pedido).State = EntityState.Modified;
             _context.Entry(itemPedido).State = EntityState.Modified;
 

@@ -121,8 +121,8 @@ namespace A2.Controllers
 
                 if (itensParaAssociar.Count != pedidoDto.ItensPedidoIds.Count)
                 {
-                     // This could happen if an ID is invalid or an item is already associated.
-                     // For simplicity, we'll proceed, but in a real app, you might want to return a BadRequest.
+                    // This could happen if an ID is invalid or an item is already associated.
+                    // For simplicity, we'll proceed, but in a real app, you might want to return a BadRequest.
                 }
 
                 foreach (var item in itensParaAssociar)
@@ -137,7 +137,7 @@ namespace A2.Controllers
             pedido.PesoTotalKg = pesoTotal;
             pedido.VolumeTotalM3 = volumeTotal;
             _context.Entry(pedido).State = EntityState.Modified;
-            
+
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetPedido", new { id = pedido.Id }, pedido);
@@ -178,13 +178,13 @@ namespace A2.Controllers
             {
                 return BadRequest("Novo Endereço de entrega associado não encontrado.");
             }
-            
+
             // Re-fetch the entity to track it, but apply changes from 'pedido'
             var trackedPedido = await _context.Pedidos
                                             .Include(p => p.ItensPedido)
                                             .FirstOrDefaultAsync(p => p.Id == id);
-            
-            if(trackedPedido == null) return NotFound(); // Should not happen given existingPedido != null
+
+            if (trackedPedido == null) return NotFound(); // Should not happen given existingPedido != null
 
             _context.Entry(trackedPedido).CurrentValues.SetValues(pedido);
 
@@ -250,7 +250,8 @@ namespace A2.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
-        }        private bool PedidoExists(int id)
+        }
+        private bool PedidoExists(int id)
         {
             return _context.Pedidos.Any(e => e.Id == id);
         }

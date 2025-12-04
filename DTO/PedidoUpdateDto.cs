@@ -1,11 +1,14 @@
-// DTO/PedidoCreateDto.cs
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using A2.Models;
 
 namespace A2.DTO
 {
-    public class PedidoCreateDto
+    public class PedidoUpdateDto
     {
+        [Required]
+        public int Id { get; set; }
+
         [Required]
         public int ClienteId { get; set; }
 
@@ -13,7 +16,10 @@ namespace A2.DTO
         public int EnderecoEntregaId { get; set; }
 
         [Required]
-        public DateTime DataLimiteEntrega { get; set; }
+        public System.DateTime DataLimiteEntrega { get; set; }
+
+        [Required]
+        public StatusPedido Status { get; set; }
 
         public List<int> ItensPedidoIds { get; set; } = new List<int>();
     }
