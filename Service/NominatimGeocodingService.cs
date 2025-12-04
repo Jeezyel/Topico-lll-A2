@@ -26,7 +26,7 @@ namespace A2.Service
         {
             try
             {
-                string query = $"{endereco.Logradouro}, {endereco.Numero}, {endereco.Cidade}, {endereco.UF}, Brazil";
+                string query = $"{endereco.Logradouro}, {endereco.Numero}, {endereco.Bairro} ,{endereco.Cidade}, {endereco.UF}, {endereco.CEP}, Brazil";
                 string encodedQuery = Uri.EscapeDataString(query);
                 string url = $"{BaseUrl}?q={encodedQuery}&format=json&limit=1";
                 

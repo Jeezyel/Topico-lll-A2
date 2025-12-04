@@ -10,5 +10,8 @@ namespace A2.DTO
         // A descrição (ex: "chuva moderada", "céu limpo")
         [JsonPropertyName("description")]
         public string Description { get; set; }
+
+        [JsonPropertyName("icon")]
+        public string Icon { get; set; }
     }
 }

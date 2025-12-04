@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
+using Newtonsoft.Json;
 
 namespace A2.Models
 {
@@ -25,6 +26,7 @@ namespace A2.Models
         public int RoleId { get; set; }
 
         [ForeignKey("RoleId")] // RoleId é a FK
+        [JsonIgnore]
         public Role? Role { get; set; }
     }
 }

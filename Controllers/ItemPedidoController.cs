@@ -19,13 +19,18 @@ namespace A2.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ItemPedido>>> GetItensPedido([FromQuery] int? pedidoId)
+        public async Task<ActionResult<IEnumerable<ItemPedido>>> GetItensPedido([FromQuery] int? pedidoId, [FromQuery] bool semPedido = false)
         {
             var query = _context.ItensPedido.AsQueryable();
 
             if (pedidoId.HasValue)
             {
                 query = query.Where(i => i.PedidoId == pedidoId.Value);
+            }
+
+            if (semPedido)
+            {
+                query = query.Where(i => i.PedidoId == null);
             }
 
             return await query.ToListAsync();
@@ -47,17 +52,18 @@ namespace A2.Controllers
         [HttpPost]
         public async Task<ActionResult<ItemPedido>> PostItem(ItemPedido item)
         {
-            var pedido = await _context.Pedidos.FindAsync(item.PedidoId);
-            if (pedido == null) return NotFound("Pedido não encontrado.");
+            if (item.PedidoId.HasValue)
+            {
+                var pedido = await _context.Pedidos.FindAsync(item.PedidoId);
+                if (pedido == null) return NotFound("Pedido não encontrado.");
+
+                // Recalculate totals
+                pedido.PesoTotalKg += (item.PesoUnitarioKg * (item.Quantidade ?? 0));
+                pedido.VolumeTotalM3 += (item.VolumeUnitarioM3 * (item.Quantidade ?? 0));
+                _context.Entry(pedido).State = EntityState.Modified;
+            }
 
             _context.ItensPedido.Add(item);
-
-            // Recalculate totals
-            pedido.PesoTotalKg += (item.PesoUnitarioKg * item.Quantidade);
-            pedido.VolumeTotalM3 += (item.VolumeUnitarioM3 * item.Quantidade);
-
-            _context.Entry(pedido).State = EntityState.Modified;
-
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetItemPedido), new { id = item.Id }, item);
@@ -78,10 +84,10 @@ namespace A2.Controllers
             if (pedido == null) return NotFound("Pedido não encontrado.");
 
             // Recalculate totals
-            pedido.PesoTotalKg -= (originalItem.PesoUnitarioKg * originalItem.Quantidade);
-            pedido.VolumeTotalM3 -= (originalItem.VolumeUnitarioM3 * originalItem.Quantidade);
-            pedido.PesoTotalKg += (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
-            pedido.VolumeTotalM3 += (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
+            pedido.PesoTotalKg -= (originalItem.PesoUnitarioKg * (originalItem.Quantidade ?? 0));
+            pedido.VolumeTotalM3 -= (originalItem.VolumeUnitarioM3 * (originalItem.Quantidade ?? 0));
+            pedido.PesoTotalKg += (itemPedido.PesoUnitarioKg * (itemPedido.Quantidade ?? 0));
+            pedido.VolumeTotalM3 += (itemPedido.VolumeUnitarioM3 * (itemPedido.Quantidade ?? 0));
             
             _context.Entry(pedido).State = EntityState.Modified;
             _context.Entry(itemPedido).State = EntityState.Modified;
@@ -118,8 +124,8 @@ namespace A2.Controllers
             if (pedido != null)
             {
                 // Recalculate totals
-                pedido.PesoTotalKg -= (itemPedido.PesoUnitarioKg * itemPedido.Quantidade);
-                pedido.VolumeTotalM3 -= (itemPedido.VolumeUnitarioM3 * itemPedido.Quantidade);
+                pedido.PesoTotalKg -= (itemPedido.PesoUnitarioKg * (itemPedido.Quantidade ?? 0));
+                pedido.VolumeTotalM3 -= (itemPedido.VolumeUnitarioM3 * (itemPedido.Quantidade ?? 0));
                 _context.Entry(pedido).State = EntityState.Modified;
             }
 

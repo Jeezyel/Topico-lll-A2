@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace A2.Models
 {
@@ -9,8 +9,7 @@ namespace A2.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        public int PedidoId { get; set; }
+        public int? PedidoId { get; set; }
         [JsonIgnore]
         [ForeignKey("PedidoId")]
         public Pedido? Pedido { get; set; }
@@ -20,7 +19,7 @@ namespace A2.Models
         public string Descricao { get; set; }
 
         [Required]
-        public int Quantidade { get; set; }
+        public int? Quantidade { get; set; }
 
         [Required]
         public decimal PesoUnitarioKg { get; set; }

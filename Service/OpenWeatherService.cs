@@ -2,6 +2,7 @@
 using A2.DTO;
 using A2.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration; // Add this using
 using System.Globalization;
 using System.Text.Json;
 
@@ -11,38 +12,42 @@ namespace A2.Service
     {
         private readonly HttpClient _httpClient;
         private readonly A2Context _context;
+        private readonly IConfiguration _configuration; // Add this
 
-        public OpenWeatherService(HttpClient httpClient, A2Context context)
+        public OpenWeatherService(HttpClient httpClient, A2Context context, IConfiguration configuration) // Add this
         {
             _httpClient = httpClient;
             _context = context;
+            _configuration = configuration; // Add this
         }
 
-        public async Task<AlertaClimatico?> VerificarClimaAsync(decimal latitude, decimal longitude)
+        public async Task<WeatherForecastDto?> VerificarClimaAsync(decimal latitude, decimal longitude)
         {
             try
             {
-                // 1. Obter configuração do banco de dados
-                var config = await _context.ConfiguracoesSistema
-                                           .FirstOrDefaultAsync(c => c.ApiNome == "OpenWeather");
+                var config = await _context.ConfiguracoesSistema.FirstOrDefaultAsync(c => c.ApiNome == "OpenWeatherMap");
                 if (config == null)
                 {
-                    Console.WriteLine("Erro: Configuração para 'OpenWeather' não encontrada no banco de dados.");
+                    Console.WriteLine("Erro: Configuração para 'OpenWeatherMap' não encontrada no banco de dados.");
                     return null;
                 }
-                
-                string apiKey = config.Valor;
-                string baseUrl = config.Endpoint;
 
+                // Use a 'Chave' do banco para buscar o valor real no IConfiguration (User Secrets)
+                string apiKey = _configuration[config.Chave];
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    Console.WriteLine($"Erro: A chave '{config.Chave}' não foi encontrada nos User Secrets ou configuração da aplicação.");
+                    return null;
+                }
+
+                string baseUrl = config.Endpoint;
                 string latStr = latitude.ToString(CultureInfo.InvariantCulture);
                 string lonStr = longitude.ToString(CultureInfo.InvariantCulture);
                 string url = $"{baseUrl}?lat={latStr}&lon={lonStr}&appid={apiKey}&units=metric&lang=pt_br";
 
-                // 2. Logar a tentativa de integração
                 var log = new LogIntegracao { ApiNome = "OpenWeather", Endpoint = baseUrl, DataHora = DateTime.UtcNow };
                 _context.LogsIntegracao.Add(log);
                 await _context.SaveChangesAsync();
-
 
                 HttpResponseMessage response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -50,15 +55,24 @@ namespace A2.Service
                 string jsonResponse = await response.Content.ReadAsStringAsync();
                 var weatherData = JsonSerializer.Deserialize<OpenWeatherResponse>(jsonResponse);
 
-                if (weatherData?.Weather?.Count > 0)
+                if (weatherData?.Weather?.Count > 0 && weatherData.Main != null)
                 {
                     var condicao = weatherData.Weather[0];
-                    int codigoId = condicao.Id;
+                    var mainInfo = weatherData.Main;
 
+                    var weatherDto = new WeatherForecastDto
+                    {
+                        Descricao = condicao.Description,
+                        Temperatura = mainInfo.Temp,
+                        SensacaoTermica = mainInfo.FeelsLike,
+                        Icone = condicao.Icon,
+                    };
+
+                    int codigoId = condicao.Id;
                     if (codigoId >= 200 && codigoId <= 699)
                     {
                         string severidade = "Média";
-                        string tipoAlerta = "Chuva/Neve";
+                        string tipoAlerta = "Condição Adversa";
 
                         if (codigoId >= 200 && codigoId < 300) { severidade = "Alta"; tipoAlerta = "Tempestade"; }
                         else if (codigoId >= 500 && codigoId < 600)
@@ -66,13 +80,16 @@ namespace A2.Service
                             if (codigoId == 502 || codigoId == 503 || codigoId == 504 || codigoId == 511 || codigoId >= 520) severidade = "Alta";
                             tipoAlerta = "Chuva";
                         }
-                        
-                        return new AlertaClimatico
+                        else if (codigoId >= 600 && codigoId < 700)
                         {
-                            TipoAlerta = tipoAlerta + ": " + condicao.Description,
-                            Severidade = severidade
-                        };
+                            tipoAlerta = "Neve";
+                        }
+
+                        weatherDto.TipoAlerta = tipoAlerta;
+                        weatherDto.Severidade = severidade;
                     }
+
+                    return weatherDto;
                 }
             }
             catch (Exception ex)

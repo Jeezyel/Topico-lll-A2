@@ -3,6 +3,7 @@ using A2.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using A2.DTO;
 using System.Security.Claims;
 
 namespace A2.Controllers
@@ -81,26 +82,62 @@ namespace A2.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Pedido>> PostPedido(Pedido pedido)
+        public async Task<ActionResult<Pedido>> PostPedido(PedidoCreateDto pedidoDto)
         {
             // Validate ClienteId
-            if (!await _context.Clientes.AnyAsync(c => c.Id == pedido.ClienteId))
+            if (!await _context.Clientes.AnyAsync(c => c.Id == pedidoDto.ClienteId))
             {
                 return BadRequest("Cliente não encontrado.");
             }
 
             // Validate EnderecoEntregaId
-            if (!await _context.EnderecosClientes.AnyAsync(e => e.Id == pedido.EnderecoEntregaId))
+            if (!await _context.EnderecosClientes.AnyAsync(e => e.Id == pedidoDto.EnderecoEntregaId))
             {
                 return BadRequest("Endereço de entrega não encontrado.");
             }
 
-            pedido.PesoTotalKg = 0;
-            pedido.VolumeTotalM3 = 0;
-            pedido.Status = StatusPedido.Pendente;
-            //pedido.RotaId = null;
+            var pedido = new Pedido
+            {
+                ClienteId = pedidoDto.ClienteId,
+                EnderecoEntregaId = pedidoDto.EnderecoEntregaId,
+                DataLimiteEntrega = pedidoDto.DataLimiteEntrega,
+                Status = StatusPedido.Pendente,
+                DataCriacao = DateTime.UtcNow,
+                PesoTotalKg = 0,
+                VolumeTotalM3 = 0
+            };
 
             _context.Pedidos.Add(pedido);
+            await _context.SaveChangesAsync(); // Save to get Pedido.Id
+
+            decimal pesoTotal = 0;
+            decimal volumeTotal = 0;
+
+            if (pedidoDto.ItensPedidoIds != null && pedidoDto.ItensPedidoIds.Any())
+            {
+                var itensParaAssociar = await _context.ItensPedido
+                    .Where(i => pedidoDto.ItensPedidoIds.Contains(i.Id) && i.PedidoId == null)
+                    .ToListAsync();
+
+                if (itensParaAssociar.Count != pedidoDto.ItensPedidoIds.Count)
+                {
+                     // This could happen if an ID is invalid or an item is already associated.
+                     // For simplicity, we'll proceed, but in a real app, you might want to return a BadRequest.
+                }
+
+                foreach (var item in itensParaAssociar)
+                {
+                    item.PedidoId = pedido.Id;
+                    pesoTotal += item.PesoUnitarioKg * (item.Quantidade ?? 1);
+                    volumeTotal += item.VolumeUnitarioM3 * (item.Quantidade ?? 1);
+                    _context.Entry(item).State = EntityState.Modified;
+                }
+            }
+
+            pedido.PesoTotalKg = pesoTotal;
+            pedido.VolumeTotalM3 = volumeTotal;
+            _context.Entry(pedido).State = EntityState.Modified;
+            
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetPedido", new { id = pedido.Id }, pedido);

@@ -7,5 +7,8 @@ namespace A2.DTO
         // A API retorna uma lista de condições climáticas
         [JsonPropertyName("weather")]
         public List<WeatherInfo> Weather { get; set; }
+
+        [JsonPropertyName("main")]
+        public MainInfo Main { get; set; }
     }
 }

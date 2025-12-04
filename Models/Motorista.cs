@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace A2.Models
 {
@@ -31,9 +31,11 @@ namespace A2.Models
         public int? UsuarioId { get; set; }
 
         [ForeignKey("UsuarioId")]
+        [JsonIgnore]
         public Usuario? Usuario { get; set; }
 
         // Um motorista pode ser responsável por várias rotas.
+        [JsonIgnore]
         public ICollection<Rota>? Rotas { get; set; }
 
         // Um motorista pode registrar várias incidências em rotas.

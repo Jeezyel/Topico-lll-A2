@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace A2.Models
 {
@@ -28,11 +28,8 @@ namespace A2.Models
         public DateTime DataRota { get; set; } = DateTime.Now;
         public StatusRota Status { get; set; } = StatusRota.Planejada;
 
-        [JsonIgnore]
         public ICollection<RotaPedido>? RotaPedidos { get; set; }
-        [JsonIgnore]
         public ICollection<AlertaClimatico>? AlertasClimaticos { get; set; }
-        [JsonIgnore]
         public ICollection<IncidenciaRota>? Incidencias { get; set; }
     }
 }

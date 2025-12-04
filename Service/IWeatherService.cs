@@ -1,9 +1,10 @@
-﻿using A2.Models;
+﻿using A2.DTO;
+using A2.Models;
 
 namespace A2.Service
 {
     public interface IWeatherService
     {
-        Task<AlertaClimatico?> VerificarClimaAsync(decimal latitude, decimal longitude);
+        Task<WeatherForecastDto?> VerificarClimaAsync(decimal latitude, decimal longitude);
     }
 }
