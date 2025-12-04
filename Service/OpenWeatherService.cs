@@ -32,20 +32,23 @@ namespace A2.Service
                     return null;
                 }
 
-                // Use a 'Chave' do banco para buscar o valor real no IConfiguration (User Secrets)
-                string apiKey = _configuration[config.Chave];
+                // Busca a chave da API diretamente da configuração (appsettings.json, User Secrets, etc.)
+                string apiKey = _configuration["OpenWeatherMap:ApiKey"];
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    Console.WriteLine($"Erro: A chave '{config.Chave}' não foi encontrada nos User Secrets ou configuração da aplicação.");
+                    Console.WriteLine("Erro: A chave 'OpenWeatherMap:ApiKey' não foi encontrada na configuração da aplicação (ex: appsettings.Development.json ou User Secrets).");
                     return null;
                 }
 
                 string baseUrl = config.Endpoint;
+                // Garante que a URL base termine com "/weather" para a chamada de clima atual
+                string correctedUrl = baseUrl.TrimEnd('/') + "/weather";
+
                 string latStr = latitude.ToString(CultureInfo.InvariantCulture);
                 string lonStr = longitude.ToString(CultureInfo.InvariantCulture);
-                string url = $"{baseUrl}?lat={latStr}&lon={lonStr}&appid={apiKey}&units=metric&lang=pt_br";
+                string url = $"{correctedUrl}?lat={latStr}&lon={lonStr}&appid={apiKey}&units=metric&lang=pt_br";
 
-                var log = new LogIntegracao { ApiNome = "OpenWeather", Endpoint = baseUrl, DataHora = DateTime.UtcNow };
+                var log = new LogIntegracao { ApiNome = "OpenWeather", Endpoint = correctedUrl, DataHora = DateTime.UtcNow };
                 _context.LogsIntegracao.Add(log);
                 await _context.SaveChangesAsync();
 
