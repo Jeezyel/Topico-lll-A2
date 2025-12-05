@@ -82,7 +82,7 @@ namespace A2.Controllers
                 return BadRequest("O ID na URL não corresponde ao ID do endereço fornecido.");
             }
 
-            var existingEndereco = await _context.EnderecosClientes.FindAsync(id);
+            var existingEndereco = await _context.EnderecosClientes.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
             if (existingEndereco == null)
             {
                 return NotFound($"Endereço com ID {id} não encontrado.");
@@ -103,22 +103,22 @@ namespace A2.Controllers
                                    existingEndereco.UF != endereco.UF;
 
             // Atualiza as propriedades do endereço existente
-            _context.Entry(existingEndereco).CurrentValues.SetValues(endereco);
+            _context.Entry(endereco).State = EntityState.Modified;
 
             if (shouldReGeocode)
             {
                 var coordenadas = await _geocodingService.ObterCoordenadasAsync(endereco);
                 if (coordenadas.HasValue)
                 {
-                    existingEndereco.Latitude = coordenadas.Value.Latitude;
-                    existingEndereco.Longitude = coordenadas.Value.Longitude;
+                    endereco.Latitude = coordenadas.Value.Latitude;
+                    endereco.Longitude = coordenadas.Value.Longitude;
                 }
                 else
                 {
-                    Console.WriteLine($"Aviso: Não foi possível re-geocodificar o endereço {endereco.Id}. Mantendo lat/lon anteriores ou zerados.");
+                    Console.WriteLine($"Aviso: Não foi possível re-geocodificar o endereço {endereco.Id}. Mantendo lat/lon zerados.");
                     // Opcional: manter os valores antigos ou zerar, dependendo da regra de negócio
-                    existingEndereco.Latitude = 0; 
-                    existingEndereco.Longitude = 0;
+                    endereco.Latitude = 0; 
+                    endereco.Longitude = 0;
                 }
             }
 

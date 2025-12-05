@@ -11,46 +11,34 @@ namespace A2.Service
     public class OpenWeatherService : IWeatherService
     {
         private readonly HttpClient _httpClient;
-        private readonly A2Context _context;
-        private readonly IConfiguration _configuration; // Add this
+        private readonly IConfiguration _configuration;
 
-        public OpenWeatherService(HttpClient httpClient, A2Context context, IConfiguration configuration) // Add this
+        public OpenWeatherService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _context = context;
-            _configuration = configuration; // Add this
+            _configuration = configuration;
         }
 
         public async Task<WeatherForecastDto?> VerificarClimaAsync(decimal latitude, decimal longitude)
         {
             try
             {
-                var config = await _context.ConfiguracoesSistema.FirstOrDefaultAsync(c => c.ApiNome == "OpenWeatherMap");
-                if (config == null)
-                {
-                    Console.WriteLine("Erro: Configuração para 'OpenWeatherMap' não encontrada no banco de dados.");
-                    return null;
-                }
-
-                // Busca a chave da API diretamente da configuração (appsettings.json, User Secrets, etc.)
+                // Busca a chave e o endpoint da API diretamente da configuração
                 string apiKey = _configuration["OpenWeatherMap:ApiKey"];
-                if (string.IsNullOrEmpty(apiKey))
+                string baseUrl = _configuration["OpenWeatherMap:Endpoint"];
+
+                if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(baseUrl))
                 {
-                    Console.WriteLine("Erro: A chave 'OpenWeatherMap:ApiKey' não foi encontrada na configuração da aplicação (ex: appsettings.Development.json ou User Secrets).");
+                    Console.WriteLine("Erro: A chave 'OpenWeatherMap:ApiKey' e/ou 'OpenWeatherMap:Endpoint' não foram encontradas na configuração da aplicação.");
                     return null;
                 }
 
-                string baseUrl = config.Endpoint;
                 // Garante que a URL base termine com "/weather" para a chamada de clima atual
                 string correctedUrl = baseUrl.TrimEnd('/') + "/weather";
 
                 string latStr = latitude.ToString(CultureInfo.InvariantCulture);
                 string lonStr = longitude.ToString(CultureInfo.InvariantCulture);
                 string url = $"{correctedUrl}?lat={latStr}&lon={lonStr}&appid={apiKey}&units=metric&lang=pt_br";
-
-                var log = new LogIntegracao { ApiNome = "OpenWeather", Endpoint = correctedUrl, DataHora = DateTime.UtcNow };
-                _context.LogsIntegracao.Add(log);
-                await _context.SaveChangesAsync();
 
                 HttpResponseMessage response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();

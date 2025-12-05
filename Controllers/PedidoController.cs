@@ -14,10 +14,12 @@ namespace A2.Controllers
     public class PedidoController : ControllerBase
     {
         private readonly A2Context _context;
+        private readonly ILogger<PedidoController> _logger;
 
-        public PedidoController(A2Context context)
+        public PedidoController(A2Context context, ILogger<PedidoController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -62,23 +64,33 @@ namespace A2.Controllers
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr))
             {
+                _logger.LogWarning("Não foi possível encontrar o NameIdentifier (ID do usuário) no token.");
                 return Unauthorized("Não foi possível identificar o usuário.");
             }
             var userId = int.Parse(userIdStr);
+            _logger.LogInformation("Buscando pedidos para o usuário com ID: {UserId}", userId);
+
 
             // 2. Encontrar o cliente associado a esse usuário
             var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.UsuarioId == userId);
             if (cliente == null)
             {
+                _logger.LogWarning("Nenhum perfil de cliente encontrado para o usuário com ID: {UserId}", userId);
                 return NotFound("Nenhum perfil de cliente encontrado para este usuário.");
             }
+            _logger.LogInformation("Cliente encontrado com ID: {ClienteId} para o usuário com ID: {UserId}", cliente.Id, userId);
 
             // 3. Buscar os pedidos apenas para este cliente
-            return await _context.Pedidos
+            var pedidos = await _context.Pedidos
                 .Where(p => p.ClienteId == cliente.Id)
                 .Include(p => p.EnderecoEntrega)
+                .Include(p => p.ItensPedido)
                 .OrderByDescending(p => p.DataCriacao)
                 .ToListAsync();
+            
+            _logger.LogInformation("Encontrados {NumPedidos} pedidos para o ClienteId {ClienteId}", pedidos.Count, cliente.Id);
+
+            return pedidos;
         }
 
         [HttpPost]
@@ -144,77 +156,95 @@ namespace A2.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPedido(int id, Pedido pedido)
+        public async Task<IActionResult> PutPedido(int id, PedidoUpdateDto pedidoDto)
         {
-            if (id != pedido.Id)
-            {
-                return BadRequest("O ID na URL não corresponde ao ID do pedido fornecido.");
-            }
-
-            var existingPedido = await _context.Pedidos
-                                                .Include(p => p.ItensPedido)
-                                                .AsNoTracking() // Use AsNoTracking para evitar problemas de tracking ao anexar 'pedido'
-                                                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (existingPedido == null)
-            {
-                return NotFound($"Pedido com ID {id} não encontrado.");
-            }
-
-            // Status check (retaining original business logic)
-            if (existingPedido.Status != StatusPedido.Pendente)
-            {
-                return BadRequest("Não é possível alterar um pedido que já está em Rota ou foi Entregue.");
-            }
-
-            // Validate ClienteId if it's being changed
-            if (existingPedido.ClienteId != pedido.ClienteId && !await _context.Clientes.AnyAsync(c => c.Id == pedido.ClienteId))
-            {
-                return BadRequest("Novo Cliente associado não encontrado.");
-            }
-
-            // Validate EnderecoEntregaId if it's being changed
-            if (existingPedido.EnderecoEntregaId != pedido.EnderecoEntregaId && !await _context.EnderecosClientes.AnyAsync(e => e.Id == pedido.EnderecoEntregaId))
-            {
-                return BadRequest("Novo Endereço de entrega associado não encontrado.");
-            }
-
-            // Re-fetch the entity to track it, but apply changes from 'pedido'
             var trackedPedido = await _context.Pedidos
                                             .Include(p => p.ItensPedido)
                                             .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (trackedPedido == null) return NotFound(); // Should not happen given existingPedido != null
-
-            _context.Entry(trackedPedido).CurrentValues.SetValues(pedido);
-
-            // --- Lógica para atualização de ItensPedido ---
-            // Remove itens antigos que não estão na nova lista
-            foreach (var existingItem in trackedPedido.ItensPedido.ToList())
+            if (trackedPedido == null)
             {
-                if (!pedido.ItensPedido.Any(newItem => newItem.Id == existingItem.Id))
-                {
-                    _context.ItensPedido.Remove(existingItem);
-                }
+                return NotFound($"Pedido com ID {id} não encontrado.");
             }
 
-            // Atualiza itens existentes e adiciona novos itens
-            foreach (var newItem in pedido.ItensPedido)
+            // Regra de negócio: Só permite edição de pedidos 'Pendentes' ou reabertura de 'Cancelados'.
+            if (trackedPedido.Status != StatusPedido.Pendente)
             {
-                var existingItem = trackedPedido.ItensPedido.FirstOrDefault(i => i.Id == newItem.Id);
-                if (existingItem != null)
+                // A única exceção é reabrir um pedido cancelado, mudando seu status para pendente.
+                if(trackedPedido.Status == StatusPedido.Cancelado && pedidoDto.Status == StatusPedido.Pendente)
                 {
-                    // Atualiza item existente
-                    _context.Entry(existingItem).CurrentValues.SetValues(newItem);
+                    // Permite a reabertura.
                 }
                 else
                 {
-                    // Adiciona novo item
-                    newItem.PedidoId = trackedPedido.Id; // Garante que o PedidoId está correto
-                    trackedPedido.ItensPedido.Add(newItem);
+                    return BadRequest("Não é possível alterar um pedido que não está com o status 'Pendente'.");
+                }
+            }
+            
+            // Impede a mudança manual para status que são controlados por outros processos (Rotas).
+            if (pedidoDto.Status != StatusPedido.Pendente && pedidoDto.Status != StatusPedido.Cancelado)
+            {
+                return BadRequest("O status de um pedido só pode ser alterado para 'Pendente' ou 'Cancelado' através desta função.");
+            }
+
+            // Valida o ClienteId se ele estiver sendo alterado
+            if (trackedPedido.ClienteId != pedidoDto.ClienteId && !await _context.Clientes.AnyAsync(c => c.Id == pedidoDto.ClienteId))
+            {
+                return BadRequest("Novo Cliente associado não encontrado.");
+            }
+
+            // Valida o EnderecoEntregaId se ele estiver sendo alterado
+            if (trackedPedido.EnderecoEntregaId != pedidoDto.EnderecoEntregaId && !await _context.EnderecosClientes.AnyAsync(e => e.Id == pedidoDto.EnderecoEntregaId))
+            {
+                return BadRequest("Novo Endereço de entrega associado não encontrado.");
+            }
+
+            // Atualiza as propriedades do pedido com os dados do DTO
+            trackedPedido.ClienteId = pedidoDto.ClienteId;
+            trackedPedido.EnderecoEntregaId = pedidoDto.EnderecoEntregaId;
+            trackedPedido.DataLimiteEntrega = pedidoDto.DataLimiteEntrega;
+            trackedPedido.Status = pedidoDto.Status;
+
+            // Atualiza a coleção de ItensPedido
+            var newItensIds = pedidoDto.ItensPedidoIds ?? new List<int>();
+            var existingItensIds = trackedPedido.ItensPedido.Select(i => i.Id).ToList();
+
+            var itensToRemove = trackedPedido.ItensPedido.Where(i => !newItensIds.Contains(i.Id)).ToList();
+            var itensToAddIds = newItensIds.Where(id => !existingItensIds.Contains(id)).ToList();
+
+            if (itensToAddIds.Any())
+            {
+                var itensToAdd = await _context.ItensPedido.Where(i => itensToAddIds.Contains(i.Id) && i.PedidoId == null).ToListAsync();
+                if (itensToAdd.Count != itensToAddIds.Count)
+                {
+                    return BadRequest("Um ou mais IDs de novos itens são inválidos ou já pertencem a outro pedido.");
+                }
+                foreach (var item in itensToAdd)
+                {
+                    trackedPedido.ItensPedido.Add(item);
                 }
             }
 
+            if (itensToRemove.Any())
+            {
+                foreach(var item in itensToRemove)
+                {
+                    // Desassocia o item em vez de remover, caso ele possa ser usado em outro lugar.
+                    item.PedidoId = null;
+                    _context.Entry(item).State = EntityState.Modified;
+                }
+            }
+            
+            // Recalcula o peso e volume totais
+            decimal pesoTotal = 0;
+            decimal volumeTotal = 0;
+            foreach (var item in trackedPedido.ItensPedido)
+            {
+                pesoTotal += item.PesoUnitarioKg * (item.Quantidade ?? 1);
+                volumeTotal += item.VolumeUnitarioM3 * (item.Quantidade ?? 1);
+            }
+            trackedPedido.PesoTotalKg = pesoTotal;
+            trackedPedido.VolumeTotalM3 = volumeTotal;
 
             try
             {

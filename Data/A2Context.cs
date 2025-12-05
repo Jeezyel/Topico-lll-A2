@@ -49,6 +49,13 @@ namespace A2.Data
                 .HasForeignKey<Motorista>(m => m.UsuarioId)
                 .OnDelete(DeleteBehavior.SetNull); // Se deletar o usuário, motorista continua existindo (sem login)
 
+            // Cliente -> Usuario (1:1)
+            modelBuilder.Entity<Cliente>()
+                .HasOne(c => c.Usuario)
+                .WithOne()
+                .HasForeignKey<Cliente>(c => c.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull); // Se deletar o usuário, o cliente continua existindo (sem login)
+
             // Usuario -> Role (N:1)
             modelBuilder.Entity<Usuario>()
                 .HasOne(u => u.Role)

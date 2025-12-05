@@ -1,26 +1,14 @@
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using A2.Models;
+using System.Collections.Generic;
 
 namespace A2.DTO
 {
     public class PedidoUpdateDto
     {
-        [Required]
-        public int Id { get; set; }
-
-        [Required]
         public int ClienteId { get; set; }
-
-        [Required]
         public int EnderecoEntregaId { get; set; }
-
-        [Required]
-        public System.DateTime DataLimiteEntrega { get; set; }
-
-        [Required]
+        public DateTime DataLimiteEntrega { get; set; }
         public StatusPedido Status { get; set; }
-
-        public List<int> ItensPedidoIds { get; set; } = new List<int>();
+        public List<int>? ItensPedidoIds { get; set; }
     }
 }

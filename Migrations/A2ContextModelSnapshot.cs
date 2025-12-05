@@ -95,7 +95,9 @@ namespace A2.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasFilter("[UsuarioId] IS NOT NULL");
 
                     b.ToTable("Clientes");
                 });
@@ -274,6 +276,9 @@ namespace A2.Migrations
                     b.Property<int>("EnderecoClienteId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("EnderecoClienteId1")
+                        .HasColumnType("int");
+
                     b.Property<TimeSpan>("HoraFim")
                         .HasColumnType("time");
 
@@ -283,6 +288,8 @@ namespace A2.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EnderecoClienteId");
+
+                    b.HasIndex("EnderecoClienteId1");
 
                     b.ToTable("JanelasHorarias");
                 });
@@ -627,8 +634,9 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.Cliente", b =>
                 {
                     b.HasOne("A2.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId");
+                        .WithOne()
+                        .HasForeignKey("A2.Models.Cliente", "UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Usuario");
                 });
@@ -680,6 +688,10 @@ namespace A2.Migrations
                         .HasForeignKey("EnderecoClienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("A2.Models.EnderecoCliente", null)
+                        .WithMany("JanelasHorario")
+                        .HasForeignKey("EnderecoClienteId1");
 
                     b.Navigation("EnderecoCliente");
                 });
@@ -795,6 +807,11 @@ namespace A2.Migrations
             modelBuilder.Entity("A2.Models.Cliente", b =>
                 {
                     b.Navigation("Enderecos");
+                });
+
+            modelBuilder.Entity("A2.Models.EnderecoCliente", b =>
+                {
+                    b.Navigation("JanelasHorario");
                 });
 
             modelBuilder.Entity("A2.Models.Motorista", b =>
