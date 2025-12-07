@@ -31,9 +31,15 @@ namespace A2.Data
         public DbSet<LogIntegracao> LogsIntegracao { get; set; }
         public DbSet<PontoDeParada> PontosDeParada { get; set; }
 
+        public DbSet<WeatherForces> WeatherForces { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configuração opcional para garantir que o 'Id' seja a chave primária
+            modelBuilder.Entity<WeatherForces>()
+                .HasKey(w => w.Id);
 
             // Veiculo -> Manutencao (1:N)
             modelBuilder.Entity<Manutencao>()

@@ -21,9 +21,10 @@
 ﻿        private readonly IWeatherService _weatherService;
 ﻿        private readonly IGeocodingService _geocodingService;
 ﻿        private readonly ILogger<RotaController> _logger;
-﻿
-﻿
-﻿        public RotaController(A2Context context, IWeatherService weatherService, IGeocodingService geocodingService, ILogger<RotaController> logger)
+        private WeatherForces weatherForcesdb = new WeatherForces();
+
+
+        public RotaController(A2Context context, IWeatherService weatherService, IGeocodingService geocodingService, ILogger<RotaController> logger)
 ﻿        {
 ﻿            _context = context;
 ﻿            _weatherService = weatherService;
@@ -389,8 +390,30 @@
 ﻿            {
 ﻿                Console.WriteLine($"[LOG] Coordenadas encontradas. Chamando o serviço de clima para Lat: {endereco.Latitude}, Lon: {endereco.Longitude}");
 ﻿                var weatherDto = await _weatherService.VerificarClimaAsync(endereco.Latitude, endereco.Longitude);
-﻿
-﻿                if (weatherDto != null)
+
+                // Atualiza o objeto WeatherForces no banco de dados
+
+                try
+                {
+
+                    weatherForcesdb.Descricao = weatherDto.Descricao;
+                    weatherForcesdb.Temperatura = weatherDto.Temperatura;
+                    weatherForcesdb.SensacaoTermica = weatherDto.SensacaoTermica;
+                    weatherForcesdb.Icone = weatherDto.Icone;
+                    weatherForcesdb.TipoAlerta = weatherDto.TipoAlerta;
+                    weatherForcesdb.Severidade = weatherDto.Severidade;
+                    weatherForcesdb.latitude = endereco.Latitude;
+                    weatherForcesdb.longitude = endereco.Longitude;
+
+                    _context.Entry(weatherForcesdb).State = EntityState.Modified;
+                }catch (Exception ex)
+                {
+                    Console.WriteLine($"[LOG] Erro ao atualizar WeatherForces: {ex.Message}");
+                }
+
+
+
+                if (weatherDto != null)
 ﻿                {
 ﻿                    Console.WriteLine($"[LOG] Serviço de clima retornou DTO: Descricao={weatherDto.Descricao}, Temp={weatherDto.Temperatura}, Alerta={weatherDto.TipoAlerta ?? "N/A"}");
 ﻿
