@@ -141,15 +141,16 @@
 ﻿                            return BadRequest($"O pedido #{pedido.Id} não possui um endereço de entrega válido.");
 ﻿                        }
 ﻿        
-﻿                        var janelasDoEndereco = await _context.JanelasHorarias
-﻿                            .Where(j => j.EnderecoClienteId == pedido.EnderecoEntrega.Id)
-﻿                            .ToListAsync();
-﻿        
-﻿                        if (!IsDentroDaJanela(dataRota, janelasDoEndereco))
-﻿                        {
-﻿                            return BadRequest($"O pedido #{pedido.Id} para o cliente '{pedido.Cliente.NomeEmpresa}' não pode ser entregue na data de hoje ({dataRota:dd/MM/yyyy}), pois está fora da janela de horário do cliente.");
-﻿                        }
-﻿                    }
+﻿                                                /*
+﻿                                                var janelasDoEndereco = await _context.JanelasHorarias
+﻿                                                    .Where(j => j.EnderecoClienteId == pedido.EnderecoEntrega.Id)
+﻿                                                    .ToListAsync();
+﻿                                
+﻿                                                if (!IsDentroDaJanela(dataRota, janelasDoEndereco))
+﻿                                                {
+﻿                                                    return BadRequest($"O pedido #{pedido.Id} para o cliente '{pedido.Cliente.NomeEmpresa}' não pode ser entregue na data de hoje ({dataRota:dd/MM/yyyy}), pois está fora da janela de horário do cliente.");
+﻿                                                }
+﻿                                                */﻿                    }
 ﻿        
 ﻿                    decimal pesoTotal = pedidos.Sum(p => p.PesoTotalKg);
 ﻿                    decimal volumeTotal = pedidos.Sum(p => p.VolumeTotalM3);
@@ -183,6 +184,7 @@
 ﻿                            StatusEntrega = "Pendente"
 ﻿                        };
 ﻿                        _context.RotaPedidos.Add(rotaPedido);
+                        rota.RotaPedidos.Add(rotaPedido);
 ﻿        
 ﻿                        p.Status = StatusPedido.EmRota;
 ﻿                        _context.Entry(p).State = EntityState.Modified;

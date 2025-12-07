@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace A2.Models
 {
@@ -28,8 +29,15 @@ namespace A2.Models
         public DateTime DataRota { get; set; } = DateTime.Now;
         public StatusRota Status { get; set; } = StatusRota.Planejada;
 
-        public ICollection<RotaPedido>? RotaPedidos { get; set; }
-        public ICollection<AlertaClimatico>? AlertasClimaticos { get; set; }
-        public ICollection<IncidenciaRota>? Incidencias { get; set; }
+        public ICollection<RotaPedido> RotaPedidos { get; set; }
+        public ICollection<AlertaClimatico> AlertasClimaticos { get; set; }
+        public ICollection<IncidenciaRota> Incidencias { get; set; }
+
+        public Rota()
+        {
+            RotaPedidos = new HashSet<RotaPedido>();
+            AlertasClimaticos = new HashSet<AlertaClimatico>();
+            Incidencias = new HashSet<IncidenciaRota>();
+        }
     }
 }
