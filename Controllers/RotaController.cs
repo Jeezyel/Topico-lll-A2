@@ -138,7 +138,32 @@
 ﻿                    {
 ﻿                        if (pedido.EnderecoEntregaId == 0 || pedido.EnderecoEntrega == null)
 ﻿                        {
-﻿                            return BadRequest($"O pedido #{pedido.Id} não possui um endereço de entrega válido.");
+
+                    // Atualiza o objeto WeatherForces no banco de dados
+
+                    var weatherDto = await _weatherService.VerificarClimaAsync(pedido.EnderecoEntrega.Latitude, pedido.EnderecoEntrega.Longitude);
+
+                    try
+                    {
+
+                        weatherForcesdb.Descricao = weatherDto.Descricao;
+                        weatherForcesdb.Temperatura = weatherDto.Temperatura;
+                        weatherForcesdb.SensacaoTermica = weatherDto.SensacaoTermica;
+                        weatherForcesdb.Icone = weatherDto.Icone;
+                        weatherForcesdb.TipoAlerta = weatherDto.TipoAlerta;
+                        weatherForcesdb.Severidade = weatherDto.Severidade;
+                        weatherForcesdb.latitude = pedido.EnderecoEntrega.Latitude;
+                        weatherForcesdb.longitude = pedido.EnderecoEntrega.Longitude;
+
+                        _context.Entry(weatherForcesdb).State = EntityState.Modified;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[LOG] Erro ao atualizar WeatherForces: {ex.Message}");
+                    }
+
+
+                    return BadRequest($"O pedido #{pedido.Id} não possui um endereço de entrega válido.");
 ﻿                        }
 ﻿        
 ﻿                                                /*
@@ -154,8 +179,10 @@
 ﻿        
 ﻿                    decimal pesoTotal = pedidos.Sum(p => p.PesoTotalKg);
 ﻿                    decimal volumeTotal = pedidos.Sum(p => p.VolumeTotalM3);
-﻿        
-﻿                    if (pesoTotal > veiculo.CapacidadeCarga)
+
+           
+
+            if (pesoTotal > veiculo.CapacidadeCarga)
 ﻿                        return BadRequest($"Peso excedido! Carga: {pesoTotal}kg. Veículo suporta: {veiculo.CapacidadeCarga}kg.");
 ﻿        
 ﻿                    if (volumeTotal > veiculo.CapacidadeVolume)
@@ -341,7 +368,8 @@
 ﻿        
 ﻿                                                    return true;
 ﻿        
-﻿                                                }﻿        private async Task VerificarEAdicionarAlertaClimaticoAsync(Rota rota)
+﻿                                                }﻿        
+        private async Task VerificarEAdicionarAlertaClimaticoAsync(Rota rota)
 ﻿        {
 ﻿            var primeiroRotaPedido = rota.RotaPedidos.OrderBy(rp => rp.OrdemEntrega).FirstOrDefault();
 ﻿            if (primeiroRotaPedido == null)
