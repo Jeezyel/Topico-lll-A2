@@ -28,8 +28,17 @@
 ﻿                                .OrderBy(v => v.Placa)
 ﻿                                .ToListAsync();
 ﻿        }
-﻿
-﻿        [HttpGet("{id}")]
+
+        [HttpGet("quantidade")] // Define uma rota específica, ex: /api/clientes/quantidade
+        public async Task<ActionResult<int>> GetQuantidadeVeiculos()
+        {
+            // O CountAsync é mais eficiente pois executa a contagem direto no banco
+            var quantidade = await _context.Veiculos.CountAsync();
+
+            return Ok(quantidade);
+        }
+
+        [HttpGet("{id}")]
 ﻿        public async Task<ActionResult<Veiculo>> GetVeiculo(int id)
 ﻿        {
 ﻿            var veiculo = await _context.Veiculos

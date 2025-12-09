@@ -31,8 +31,17 @@
 ﻿            _geocodingService = geocodingService;
 ﻿            _logger = logger;
 ﻿        }
-﻿
-﻿        [HttpGet]
+
+        [HttpGet("quantidade")] // Define uma rota específica, ex: /api/clientes/quantidade
+        public async Task<ActionResult<int>> GetQuantidadeRotas()
+        {
+            // O CountAsync é mais eficiente pois executa a contagem direto no banco
+            var quantidade = await _context.Rotas.CountAsync();
+
+            return Ok(quantidade);
+        }
+
+        [HttpGet]
 ﻿        public async Task<ActionResult<IEnumerable<Rota>>> GetRotas()
 ﻿        {
 ﻿            return await _context.Rotas

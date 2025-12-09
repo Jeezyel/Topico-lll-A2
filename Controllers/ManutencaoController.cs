@@ -25,6 +25,15 @@ namespace A2.Controllers
             return await _context.Manutencoes.Include(m => m.Veiculo).OrderByDescending(m => m.DataInicio).ToListAsync();
         }
 
+        [HttpGet("quantidade")] // Define uma rota específica, ex: /api/clientes/quantidade
+        public async Task<ActionResult<int>> GetQuantidadeManutencoes()
+        {
+            // O CountAsync é mais eficiente pois executa a contagem direto no banco
+            var quantidade = await _context.Manutencoes.CountAsync();
+
+            return Ok(quantidade);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<Manutencao>> GetManutencao(int id)
         {

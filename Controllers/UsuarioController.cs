@@ -29,6 +29,15 @@ namespace A2.Controllers
             return await _context.Usuarios.Include(u => u.Role).ToListAsync();
         }
 
+        [HttpGet("quantidade")] // Define uma rota específica, ex: /api/clientes/quantidade
+        public async Task<ActionResult<int>> GetQuantidadeUsuarios()
+        {
+            // O CountAsync é mais eficiente pois executa a contagem direto no banco
+            var quantidade = await _context.Usuarios.CountAsync();
+
+            return Ok(quantidade);
+        }
+
         // GET: api/Usuario/{id}
         [HttpGet("{id}")]
         [Authorize]
