@@ -37,153 +37,115 @@ namespace A2.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configuração opcional para garantir que o 'Id' seja a chave primária
-            modelBuilder.Entity<WeatherForces>()
-                .HasKey(w => w.Id);
+            // --- RELACIONAMENTOS E CONFIGURAÇÕES DE ENTIDADES ---
 
-            // Veiculo -> Manutencao (1:N)
-            modelBuilder.Entity<Manutencao>()
-                .HasOne(m => m.Veiculo)
-                .WithMany(v => v.Manutencoes)
-                .HasForeignKey(m => m.VeiculoId)
-                .OnDelete(DeleteBehavior.Cascade); // Se deletar o veículo, deleta as manutenções
+            // WeatherForces
+            modelBuilder.Entity<WeatherForces>().HasKey(w => w.Id);
 
-            // Motorista -> Usuario (1:1)
-            modelBuilder.Entity<Motorista>()
-                .HasOne(m => m.Usuario)
-                .WithOne()
-                .HasForeignKey<Motorista>(m => m.UsuarioId)
-                .OnDelete(DeleteBehavior.SetNull); // Se deletar o usuário, motorista continua existindo (sem login)
+            // Veiculo
+            modelBuilder.Entity<Veiculo>().Property(v => v.CapacidadeCarga).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<Veiculo>().Property(v => v.CapacidadeVolume).HasColumnType("decimal(10,2)");
 
-            // Cliente -> Usuario (1:1)
-            modelBuilder.Entity<Cliente>()
-                .HasOne(c => c.Usuario)
-                .WithOne()
-                .HasForeignKey<Cliente>(c => c.UsuarioId)
-                .OnDelete(DeleteBehavior.SetNull); // Se deletar o usuário, o cliente continua existindo (sem login)
+            // Manutencao
+            modelBuilder.Entity<Manutencao>().Property(m => m.Custo).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<Manutencao>().HasOne(m => m.Veiculo).WithMany(v => v.Manutencoes).HasForeignKey(m => m.VeiculoId).OnDelete(DeleteBehavior.Cascade);
 
-            // Usuario -> Role (N:1)
-            modelBuilder.Entity<Usuario>()
-                .HasOne(u => u.Role)
-                .WithMany(r => r.Usuarios)
-                .HasForeignKey(u => u.RoleId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // Motorista
+            modelBuilder.Entity<Motorista>().HasOne(m => m.Usuario).WithOne().HasForeignKey<Motorista>(m => m.UsuarioId).OnDelete(DeleteBehavior.SetNull);
 
-            // Tipos de Coluna para Veiculo
-            modelBuilder.Entity<Veiculo>()
-                .Property(v => v.CapacidadeCarga)
-                .HasColumnType("decimal(10,2)");
+            // Cliente
+            modelBuilder.Entity<Cliente>().HasOne(c => c.Usuario).WithOne().HasForeignKey<Cliente>(c => c.UsuarioId).OnDelete(DeleteBehavior.SetNull);
 
-            modelBuilder.Entity<Veiculo>()
-                .Property(v => v.CapacidadeVolume)
-                .HasColumnType("decimal(10,2)");
+            // Usuario
+            modelBuilder.Entity<Usuario>().HasOne(u => u.Role).WithMany(r => r.Usuarios).HasForeignKey(u => u.RoleId).OnDelete(DeleteBehavior.Restrict);
 
-            // Tipo de Coluna para Manutencao
-            modelBuilder.Entity<Manutencao>()
-                .Property(m => m.Custo)
-                .HasColumnType("decimal(10,2)");
+            // Pedido
+            modelBuilder.Entity<Pedido>().Property(p => p.PesoTotalKg).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<Pedido>().Property(p => p.VolumeTotalM3).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<Pedido>().HasOne(p => p.Cliente).WithMany().HasForeignKey(p => p.ClienteId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Pedido>().HasOne(p => p.EnderecoEntrega).WithMany().HasForeignKey(p => p.EnderecoEntregaId).OnDelete(DeleteBehavior.Restrict);
 
-            // Tipos de Coluna para Pedido
-            modelBuilder.Entity<Pedido>()
-                .Property(p => p.PesoTotalKg)
-                .HasColumnType("decimal(10,2)");
+            // ItemPedido
+            modelBuilder.Entity<ItemPedido>().Property(ip => ip.PesoUnitarioKg).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<ItemPedido>().Property(ip => ip.VolumeUnitarioM3).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<ItemPedido>().HasOne(i => i.Pedido).WithMany(p => p.ItensPedido).HasForeignKey(i => i.PedidoId).OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Pedido>()
-                .Property(p => p.VolumeTotalM3)
-                .HasColumnType("decimal(10,2)");
+            // RotaPedido (Chave Composta)
+            modelBuilder.Entity<RotaPedido>().HasKey(rp => new { rp.RotaId, rp.PedidoId });
+            modelBuilder.Entity<RotaPedido>().HasOne(rp => rp.Rota).WithMany(r => r.RotaPedidos).HasForeignKey(rp => rp.RotaId);
+            modelBuilder.Entity<RotaPedido>().HasOne(rp => rp.Pedido).WithMany(p => p.RotaPedidos).HasForeignKey(rp => rp.PedidoId);
 
-            // Pedido -> Cliente (N:1, Restrict)
-            modelBuilder.Entity<Pedido>()
-                .HasOne(p => p.Cliente)
-                .WithMany()
-                .HasForeignKey(p => p.ClienteId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // EnderecoCliente
+            modelBuilder.Entity<EnderecoCliente>().HasOne(e => e.Cliente).WithMany(c => c.Enderecos).HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EnderecoCliente>().Property(e => e.Latitude).HasColumnType("decimal(10,8)");
+            modelBuilder.Entity<EnderecoCliente>().Property(e => e.Longitude).HasColumnType("decimal(11,8)");
 
-            // Pedido -> EnderecoEntrega (N:1, Restrict)
-            modelBuilder.Entity<Pedido>()
-                .HasOne(p => p.EnderecoEntrega)
-                .WithMany()
-                .HasForeignKey(p => p.EnderecoEntregaId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // AlertaClimatico
+            modelBuilder.Entity<AlertaClimatico>().HasOne(a => a.Rota).WithMany(r => r.AlertasClimaticos).HasForeignKey(a => a.RotaId).OnDelete(DeleteBehavior.Cascade);
 
-            // Tipos de Coluna para ItemPedido
-            modelBuilder.Entity<ItemPedido>()
-                .Property(ip => ip.PesoUnitarioKg)
-                .HasColumnType("decimal(10,2)");
+            // IncidenciaRota
+            modelBuilder.Entity<IncidenciaRota>().HasOne(i => i.Rota).WithMany(r => r.Incidencias).HasForeignKey(i => i.RotaId).OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<ItemPedido>()
-                .Property(ip => ip.VolumeUnitarioM3)
-                .HasColumnType("decimal(10,2)");
+            // JanelaHorario
+            modelBuilder.Entity<JanelaHorario>().HasOne(j => j.EnderecoCliente).WithMany().HasForeignKey(j => j.EnderecoClienteId).OnDelete(DeleteBehavior.Cascade);
 
-            // ItemPedido -> Pedido (N:1, Cascade)
-            modelBuilder.Entity<ItemPedido>()
-                .HasOne(i => i.Pedido)
-                .WithMany(p => p.ItensPedido)
-                .HasForeignKey(i => i.PedidoId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // PontoDeParada
+            modelBuilder.Entity<PontoDeParada>().HasOne(p => p.Rota).WithMany().HasForeignKey(p => p.RotaId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PontoDeParada>().Property(p => p.Latitude).HasColumnType("decimal(10,8)");
+            modelBuilder.Entity<PontoDeParada>().Property(p => p.Longitude).HasColumnType("decimal(11,8)");
 
-            // RotaPedido (Chave Composta e Relacionamentos)
-            modelBuilder.Entity<RotaPedido>()
-                .HasKey(rp => new { rp.RotaId, rp.PedidoId });
+            // --- SEED DATA ---
 
-            modelBuilder.Entity<RotaPedido>()
-                .HasOne(rp => rp.Rota)
-                .WithMany(r => r.RotaPedidos)
-                .HasForeignKey(rp => rp.RotaId);
+            // Roles
+            modelBuilder.Entity<Role>().HasData(
+                new Role { Id = 1, Nome = "Administrador" },
+                new Role { Id = 2, Nome = "Motorista" },
+                new Role { Id = 3, Nome = "Cliente" }
+            );
 
-            modelBuilder.Entity<RotaPedido>()
-                .HasOne(rp => rp.Pedido)
-                .WithMany(p => p.RotaPedidos)
-                .HasForeignKey(rp => rp.PedidoId);
+            // ConfiguracoesSistema
+            modelBuilder.Entity<ConfiguracaoSistema>().HasData(
+                new ConfiguracaoSistema { Id = 1, ApiNome = "OpenWeatherMap", Chave = "SUA_CHAVE_NOS_USER_SECRETS", Endpoint = "https://api.openweathermap.org/data/2.5/", Valor = "Configuração Padrão" }
+            );
 
-            // EnderecoCliente -> Cliente (N:1, Cascade)
-            modelBuilder.Entity<EnderecoCliente>()
-                .HasOne(e => e.Cliente)
-                .WithMany(c => c.Enderecos)
-                .HasForeignKey(e => e.ClienteId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Usuarios (Senha para todos é '123456', será resetada pelo Program.cs na inicialização)
+            string passHashPlaceholder = "needs_reset"; 
+            modelBuilder.Entity<Usuario>().HasData(
+                new Usuario { Id = 1, Email = "admin@logifleet.com", Nome = "Admin Sistema", RoleId = 1, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 2, Email = "carlos.mot@logifleet.com", Nome = "Carlos Motorista", RoleId = 2, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 3, Email = "ana.mot@logifleet.com", Nome = "Ana Motorista", RoleId = 2, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 4, Email = "roberto.cli@techstore.com", Nome = "Roberto Cliente", RoleId = 3, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 5, Email = "maria.cli@example.com", Nome = "Maria Cliente", RoleId = 3, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 6, Email = "pedro.cli@example.com", Nome = "Pedro Cliente", RoleId = 3, SenhaHash = passHashPlaceholder },
+                new Usuario { Id = 7, Email = "joana.cli@example.com", Nome = "Joana Cliente", RoleId = 3, SenhaHash = passHashPlaceholder }
+            );
+            
+            // Motoristas
+            modelBuilder.Entity<Motorista>().HasData(
+                new Motorista { Id = 1, CNH = "11111111111", CPF = "12345678901", Email = "carlos.mot@logifleet.com", Nome = "Carlos Oliveira", Telefone = "11999998888", UsuarioId = 2 },
+                new Motorista { Id = 2, CNH = "22222222222", CPF = "98765432109", Email = "ana.mot@logifleet.com", Nome = "Ana Souza", Telefone = "11977776666", UsuarioId = 3 }
+            );
 
-            // Tipos de Coluna para EnderecoCliente (Coordenadas)
-            modelBuilder.Entity<EnderecoCliente>()
-                .Property(e => e.Latitude).HasColumnType("decimal(10,8)");
+            // Clientes
+            modelBuilder.Entity<Cliente>().HasData(
+                new Cliente { Id = 1, CNPJ = "12345678000199", Email = "compras@techstore.com.br", NomeContato = "Roberto Lima", NomeEmpresa = "TechStore Eletrônicos", Telefone = "1130304040", UsuarioId = 4 },
+                new Cliente { Id = 2, CNPJ = "98765432000155", Email = "gerencia@supermercado.com", NomeContato = "Fernanda Costa", NomeEmpresa = "Supermercado Preço Bom", Telefone = "1132325050", UsuarioId = 7 },
+                new Cliente { Id = 3, CNPJ = "11223344000100", Email = "maria@lojadamaria.com.br", NomeContato = "Maria Silva", NomeEmpresa = "Loja da Maria", Telefone = "1199887766", UsuarioId = 5 },
+                new Cliente { Id = 4, CNPJ = "55443322000111", Email = "pedro@mercadopedro.com.br", NomeContato = "Pedro Mendes", NomeEmpresa = "Mercado do Pedro", Telefone = "1196655443", UsuarioId = 6 }
+            );
 
-            modelBuilder.Entity<EnderecoCliente>()
-                .Property(e => e.Longitude).HasColumnType("decimal(11,8)");
+            // EnderecosClientes
+            modelBuilder.Entity<EnderecoCliente>().HasData(
+                new EnderecoCliente { Id = 1, ClienteId = 1, CEP = "01310100", Logradouro = "Avenida Paulista", Numero = "1000", Bairro = "Bela Vista", Cidade = "São Paulo", UF = "SP", Latitude = -23.561496m, Longitude = -46.655967m, Complemento = "Conjunto 101" },
+                new EnderecoCliente { Id = 2, ClienteId = 2, CEP = "01001000", Logradouro = "Praça da Sé", Numero = "10", Bairro = "Centro", Cidade = "São Paulo", UF = "SP", Latitude = -23.5489m, Longitude = -46.6388m, Complemento = "Loja Térrea" }
+            );
 
-            // AlertaClimatico -> Rota (N:1, Cascade)
-            modelBuilder.Entity<AlertaClimatico>()
-                .HasOne(a => a.Rota)
-                .WithMany(r => r.AlertasClimaticos)
-                .HasForeignKey(a => a.RotaId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // IncidenciaRota -> Rota (N:1, Restrict)
-            modelBuilder.Entity<IncidenciaRota>()
-                .HasOne(i => i.Rota)
-                .WithMany(r => r.Incidencias)
-                .HasForeignKey(i => i.RotaId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // JanelaHorario -> EnderecoCliente (N:1, Cascade)
-            modelBuilder.Entity<JanelaHorario>()
-                .HasOne(j => j.EnderecoCliente)
-                .WithMany()
-                .HasForeignKey(j => j.EnderecoClienteId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // PontoDeParada -> Rota (N:1, Cascade)
-            modelBuilder.Entity<PontoDeParada>()
-                .HasOne(p => p.Rota)
-                .WithMany()
-                .HasForeignKey(p => p.RotaId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // Tipos de Coluna para PontoDeParada (Coordenadas)
-            modelBuilder.Entity<PontoDeParada>()
-                .Property(p => p.Latitude).HasColumnType("decimal(10,8)");
-
-            modelBuilder.Entity<PontoDeParada>()
-                .Property(p => p.Longitude).HasColumnType("decimal(11,8)");
+            // Veiculos
+            modelBuilder.Entity<Veiculo>().HasData(
+                 new Veiculo { Id = 1, AnoFabricacao = 2022, CapacidadeCarga = 8000.00m, CapacidadeVolume = 45.00m, DataProximaManutencao = new DateTime(2026, 3, 1), DataUltimaManutencao = new DateTime(2025, 9, 1), Marca = "Volvo", Modelo = "VM 270", Placa = "LOG-1001", Status = StatusVeiculo.Disponivel },
+                 new Veiculo { Id = 2, AnoFabricacao = 2023, CapacidadeCarga = 1500.00m, CapacidadeVolume = 12.00m, DataProximaManutencao = new DateTime(2025, 12, 1), DataUltimaManutencao = new DateTime(2025, 6, 1), Marca = "Mercedes", Modelo = "Sprinter", Placa = "LOG-2002", Status = StatusVeiculo.EmManutencao },
+                 new Veiculo { Id = 3, AnoFabricacao = 2021, CapacidadeCarga = 800.00m, CapacidadeVolume = 4.00m, DataProximaManutencao = new DateTime(2026, 1, 1), DataUltimaManutencao = new DateTime(2025, 10, 1), Marca = "Fiat", Modelo = "Fiorino", Placa = "LOG-3003", Status = StatusVeiculo.EmRota }
+            );
         }
     }
 }

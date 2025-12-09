@@ -182,9 +182,9 @@ namespace A2.Controllers
             }
             
             // Impede a mudança manual para status que são controlados por outros processos (Rotas).
-            if (pedidoDto.Status != StatusPedido.Pendente && pedidoDto.Status != StatusPedido.Cancelado)
+            if (pedidoDto.Status != StatusPedido.Pendente && pedidoDto.Status != StatusPedido.Cancelado && pedidoDto.Status != StatusPedido.EmRota)
             {
-                return BadRequest("O status de um pedido só pode ser alterado para 'Pendente' ou 'Cancelado' através desta função.");
+                return BadRequest("O status de um pedido só pode ser alterado para 'Pendente', 'Cancelado' ou 'EmRota' através desta função.");
             }
 
             // Valida o ClienteId se ele estiver sendo alterado
@@ -268,16 +268,49 @@ namespace A2.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePedido(int id)
         {
-            var pedido = await _context.Pedidos.FindAsync(id);
-            if (pedido == null) return NotFound();
+            var pedido = await _context.Pedidos
+                .Include(p => p.ItensPedido)
+                .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (pedido.Status != StatusPedido.Pendente && pedido.Status != StatusPedido.Cancelado)
+            if (pedido == null)
             {
-                return BadRequest("Não é possível excluir um pedido que está ativo em uma Rota.");
+                return NotFound();
             }
 
-            _context.Pedidos.Remove(pedido);
-            await _context.SaveChangesAsync();
+            if (pedido.Status == StatusPedido.EmRota || pedido.Status == StatusPedido.Entregue)
+            {
+                return BadRequest("Não é possível excluir um pedido que está 'Em Rota' ou já foi 'Entregue'.");
+            }
+
+            try
+            {
+                // 1. Remove associações em RotaPedido
+                var rotaPedidos = await _context.RotaPedidos.Where(rp => rp.PedidoId == id).ToListAsync();
+                if (rotaPedidos.Any())
+                {
+                    _context.RotaPedidos.RemoveRange(rotaPedidos);
+                }
+
+                // 2. Desassocia Itens do Pedido (para que não sejam órfãos ou excluídos)
+                if (pedido.ItensPedido != null && pedido.ItensPedido.Any())
+                {
+                    foreach (var item in pedido.ItensPedido)
+                    {
+                        item.PedidoId = null;
+                        _context.Entry(item).State = EntityState.Modified;
+                    }
+                }
+
+                // 3. Remove o Pedido
+                _context.Pedidos.Remove(pedido);
+
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Erro de banco de dados ao tentar excluir o pedido {PedidoId}", id);
+                return Conflict("Não foi possível excluir o pedido devido a outras dependências no banco de dados. Verifique logs para mais detalhes.");
+            }
 
             return NoContent();
         }

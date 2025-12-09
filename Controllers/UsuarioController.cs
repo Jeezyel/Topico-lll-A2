@@ -1,4 +1,5 @@
 ﻿using A2.Data;
+using A2.DTO;
 using A2.Models;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
@@ -76,42 +77,46 @@ namespace A2.Controllers
 
         // PUT: api/Usuario/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
+        [Authorize]
+        public async Task<IActionResult> PutUsuario(int id, UsuarioUpdateDto usuarioDto)
         {
-            if (id != usuario.Id)
+            if (id != usuarioDto.Id)
             {
                 return BadRequest("O ID na URL não corresponde ao ID do usuário fornecido.");
             }
 
-            var existingUsuario = await _context.Usuarios
-                                                .AsNoTracking() // Carrega para não rastrear e poder anexar 'usuario' depois
-                                                .FirstOrDefaultAsync(u => u.Id == id);
+            var existingUsuario = await _context.Usuarios.FindAsync(id);
 
             if (existingUsuario == null)
             {
                 return NotFound($"Usuário com ID {id} não encontrado.");
             }
 
-            // Validar se a Role existe se o RoleId for alterado
-            if (existingUsuario.RoleId != usuario.RoleId && !await _context.Roles.AnyAsync(r => r.Id == usuario.RoleId))
+            // Valida o e-mail duplicado, ignorando o próprio usuário
+            if (await _context.Usuarios.AnyAsync(u => u.Email == usuarioDto.Email && u.Id != id))
             {
-                return BadRequest("Role (Perfil) inválida ou inexistente. Crie a Role primeiro.");
+                return BadRequest("O e-mail fornecido já está em uso por outro usuário.");
             }
 
-            // Acompanha a entidade 'usuario' e marca como modificada
-            _context.Entry(usuario).State = EntityState.Modified;
+            // Valida se a Role existe se o RoleId for alterado
+            if (existingUsuario.RoleId != usuarioDto.RoleId && !await _context.Roles.AnyAsync(r => r.Id == usuarioDto.RoleId))
+            {
+                return BadRequest("Role (Perfil) inválida ou inexistente.");
+            }
+
+            // Atualiza as propriedades do usuário existente com base no DTO
+            existingUsuario.Nome = usuarioDto.Nome;
+            existingUsuario.Email = usuarioDto.Email;
+            existingUsuario.RoleId = usuarioDto.RoleId;
 
             // Lógica para atualização de senha:
-            if (!string.IsNullOrWhiteSpace(usuario.SenhaHash))
+            if (!string.IsNullOrWhiteSpace(usuarioDto.SenhaHash))
             {
-                // Assume que a SenhaHash recebida é a senha em texto puro que precisa ser criptografada.
-                usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(usuario.SenhaHash);
+                existingUsuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(usuarioDto.SenhaHash);
             }
-            else
-            {
-                // Se a SenhaHash não foi fornecida, mantém o hash existente do banco.
-                _context.Entry(usuario).Property(u => u.SenhaHash).IsModified = false;
-            }
+            // Se a senha no DTO for nula ou vazia, não fazemos nada, mantendo o hash existente.
+
+            _context.Entry(existingUsuario).State = EntityState.Modified;
 
             try
             {

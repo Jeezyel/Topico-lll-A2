@@ -105,8 +105,20 @@ namespace A2.Controllers
         {
             var cliente = await _context.Clientes.FindAsync(id);
             if (cliente == null) return NotFound();
+
             _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Isso provavelmente significa que há uma violação de chave estrangeira
+                // (por exemplo, o cliente tem pedidos ou endereços associados).
+                return Conflict("Não é possível excluir este cliente, pois existem registros associados a ele (como pedidos ou endereços). Remova as associações primeiro.");
+            }
+
             return NoContent();
         }
     }

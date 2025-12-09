@@ -80,6 +80,35 @@ namespace A2.Controllers
             return CreatedAtAction("GetManutencao", new { id = manutencao.Id }, manutencao);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutManutencao(int id, Manutencao manutencao)
+        {
+            if (id != manutencao.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(manutencao).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ManutencaoExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
         [HttpPut("{id}/Finalizar")]
         public async Task<IActionResult> FinalizarManutencao(int id, Manutencao manutencaoAtualizada)
         {

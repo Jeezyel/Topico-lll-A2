@@ -1,5 +1,7 @@
 using A2.Data;
+using A2.Models;
 using A2.Service;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -23,7 +25,7 @@ builder.Services.AddScoped<IWeatherService, OpenWeatherService>();
 // Add services to the container.
 
 
-// Configurar a autenticação JWT
+// Configurar a autenticaï¿½ï¿½o JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -45,7 +47,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
-    // Esta é a linha mágica que impede o loop infinito
+    // Esta ï¿½ a linha mï¿½gica que impede o loop infinito
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 });
 
@@ -59,7 +61,7 @@ builder.Services.AddCors(options =>
     {
         builder.AllowAnyOrigin()  // Permite qualquer origem (React)
                .AllowAnyMethod()  // Permite GET, POST, PUT, DELETE...
-               .AllowAnyHeader(); // Permite enviar o Token no cabeçalho
+               .AllowAnyHeader(); // Permite enviar o Token no cabeï¿½alho
     });
 });
 
@@ -70,15 +72,68 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Reset admin password on startup in development for consistency
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<A2Context>();
+            
+            // 1. Reset Admin User
+            var adminUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "admin@logifleet.com");
+            if (adminUser != null)
+            {
+                bool needsUpdate = true;
+                try { needsUpdate = !BCrypt.Net.BCrypt.Verify("123456", adminUser.SenhaHash); }
+                catch { needsUpdate = true; } // Hash is invalid format
+
+                if(needsUpdate)
+                {
+                    adminUser.SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                    await context.SaveChangesAsync();
+                    Console.WriteLine(">>>> Senha do usuÃ¡rio 'admin@logifleet.com' resetada para '123456'.");
+                }
+            }
+
+            // 2. Reset Test User
+            var testUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "test@example.com");
+            if (testUser != null)
+            {
+                bool needsUpdate = true;
+                try { needsUpdate = !BCrypt.Net.BCrypt.Verify("123456", testUser.SenhaHash); }
+                catch { needsUpdate = true; } // Hash is invalid format
+
+                if(needsUpdate)
+                {
+                    testUser.SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                    await context.SaveChangesAsync();
+                    Console.WriteLine(">>>> Senha do usuÃ¡rio 'test@example.com' resetada para '123456'.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Ocorreu um erro ao tentar resetar senhas de desenvolvimento.");
+        }
+    }
 }
 
 app.UseHttpsRedirection();
+
+app.UseRouting(); // Adiciona o middleware de roteamento
 
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+// Mapeia os controllers para os endpoints
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+});
 
 app.Run();
