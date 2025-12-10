@@ -25,7 +25,7 @@ builder.Services.AddScoped<IWeatherService, OpenWeatherService>();
 // Add services to the container.
 
 
-// Configurar a autentica��o JWT
+// Configurar a autenticao JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -47,8 +47,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
-    // Esta � a linha m�gica que impede o loop infinito
+    // Esta  a linha mgica que impede o loop infinito
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -61,7 +62,7 @@ builder.Services.AddCors(options =>
     {
         builder.AllowAnyOrigin()  // Permite qualquer origem (React)
                .AllowAnyMethod()  // Permite GET, POST, PUT, DELETE...
-               .AllowAnyHeader(); // Permite enviar o Token no cabe�alho
+               .AllowAnyHeader(); // Permite enviar o Token no cabealho
     });
 });
 
@@ -111,6 +112,26 @@ if (app.Environment.IsDevelopment())
                     await context.SaveChangesAsync();
                     Console.WriteLine(">>>> Senha do usuário 'test@example.com' resetada para '123456'.");
                 }
+            }
+
+            // 3. Reset all Client Users
+            var clientRole = await context.Roles.FirstOrDefaultAsync(r => r.Nome == "Cliente");
+            if (clientRole != null)
+            {
+                var clientUsers = await context.Usuarios.Where(u => u.RoleId == clientRole.Id).ToListAsync();
+                foreach (var clientUser in clientUsers)
+                {
+                    bool needsUpdate = true;
+                    try { needsUpdate = !BCrypt.Net.BCrypt.Verify("123456", clientUser.SenhaHash); }
+                    catch { needsUpdate = true; } // Hash is invalid format
+
+                    if (needsUpdate)
+                    {
+                        clientUser.SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                        Console.WriteLine($">>>> Senha do usuário cliente '{clientUser.Email}' resetada para '123456'.");
+                    }
+                }
+                await context.SaveChangesAsync();
             }
         }
         catch (Exception ex)

@@ -15,7 +15,7 @@ namespace A2.Models
         [Required] public int ClienteId { get; set; }
         [ForeignKey("ClienteId")] [JsonIgnore] public Cliente? Cliente { get; set; }
         [Required] public int EnderecoEntregaId { get; set; }
-        [ForeignKey("EnderecoEntregaId")] [JsonIgnore] public EnderecoCliente? EnderecoEntrega { get; set; }
+        [ForeignKey("EnderecoEntregaId")] public EnderecoCliente? EnderecoEntrega { get; set; }
 
         public DateTime DataCriacao { get; set; } = DateTime.Now;
         public DateTime DataLimiteEntrega { get; set; }

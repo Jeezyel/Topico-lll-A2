@@ -176,26 +176,6 @@ namespace A2.Controllers
                 return NotFound($"Pedido com ID {id} não encontrado.");
             }
 
-            // Regra de negócio: Só permite edição de pedidos 'Pendentes' ou reabertura de 'Cancelados'.
-            if (trackedPedido.Status != StatusPedido.Pendente)
-            {
-                // A única exceção é reabrir um pedido cancelado, mudando seu status para pendente.
-                if(trackedPedido.Status == StatusPedido.Cancelado && pedidoDto.Status == StatusPedido.Pendente)
-                {
-                    // Permite a reabertura.
-                }
-                else
-                {
-                    return BadRequest("Não é possível alterar um pedido que não está com o status 'Pendente'.");
-                }
-            }
-            
-            // Impede a mudança manual para status que são controlados por outros processos (Rotas).
-            if (pedidoDto.Status != StatusPedido.Pendente && pedidoDto.Status != StatusPedido.Cancelado && pedidoDto.Status != StatusPedido.EmRota)
-            {
-                return BadRequest("O status de um pedido só pode ser alterado para 'Pendente', 'Cancelado' ou 'EmRota' através desta função.");
-            }
-
             // Valida o ClienteId se ele estiver sendo alterado
             if (trackedPedido.ClienteId != pedidoDto.ClienteId && !await _context.Clientes.AnyAsync(c => c.Id == pedidoDto.ClienteId))
             {
