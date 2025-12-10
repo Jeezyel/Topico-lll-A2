@@ -21,7 +21,6 @@
 ﻿        private readonly IWeatherService _weatherService;
 ﻿        private readonly IGeocodingService _geocodingService;
 ﻿        private readonly ILogger<RotaController> _logger;
-        private WeatherForces weatherForcesdb = new WeatherForces();
 
 
         public RotaController(A2Context context, IWeatherService weatherService, IGeocodingService geocodingService, ILogger<RotaController> logger)
@@ -108,124 +107,175 @@
 ﻿            return rota;
 ﻿        }
 ﻿
-﻿                [HttpPost]
-﻿                public async Task<ActionResult<Rota>> PostRota(RotaRequest request)
-﻿                {
-﻿                    var veiculo = await _context.Veiculos.FindAsync(request.VeiculoId);
-﻿                    if (veiculo == null) return BadRequest("Veículo inválido.");
-﻿        
-﻿                    if (veiculo.DataProximaManutencao < DateTime.Today)
-﻿                        return BadRequest("Veículo está com a manutenção atrasada.");
-﻿        
-﻿                    if (veiculo.Status != StatusVeiculo.Disponivel)
-﻿                        return BadRequest("Veículo não está disponível.");
-﻿        
-﻿                    var motorista = await _context.Motoristas.FindAsync(request.MotoristaId);
-﻿                    if (motorista == null) return BadRequest("Motorista inválido.");
-﻿        
-﻿                    var pedidos = await _context.Pedidos
-﻿                        .Include(p => p.Cliente)
-﻿                        .Include(p => p.EnderecoEntrega)
-﻿                        .Where(p => request.PedidosIds.Contains(p.Id) && p.Status == StatusPedido.Pendente)
-﻿                        .ToListAsync();
-﻿        
-﻿                    if (pedidos.Count != request.PedidosIds.Count)
-﻿                        return BadRequest("Alguns pedidos não foram encontrados ou não estão pendentes.");
-﻿        
-﻿                    // Validação da Janela de Horário
-﻿                    var dataRota = DateTime.Now; // A rota é criada para o dia de hoje.
-﻿                    foreach (var pedido in pedidos)
-﻿                    {
-﻿                        if (pedido.EnderecoEntregaId == 0 || pedido.EnderecoEntrega == null)
+﻿                        [HttpPost]
+﻿
+﻿                        public async Task<ActionResult<Rota>> PostRota(RotaRequest request)
+﻿
 ﻿                        {
-
-                    // Atualiza o objeto WeatherForces no banco de dados
-
-                    var weatherDto = await _weatherService.VerificarClimaAsync(pedido.EnderecoEntrega.Latitude, pedido.EnderecoEntrega.Longitude);
-
-                    try
-                    {
-
-                        weatherForcesdb.Descricao = weatherDto.Descricao;
-                        weatherForcesdb.Temperatura = weatherDto.Temperatura;
-                        weatherForcesdb.SensacaoTermica = weatherDto.SensacaoTermica;
-                        weatherForcesdb.Icone = weatherDto.Icone;
-                        weatherForcesdb.TipoAlerta = weatherDto.TipoAlerta;
-                        weatherForcesdb.Severidade = weatherDto.Severidade;
-                        weatherForcesdb.latitude = pedido.EnderecoEntrega.Latitude;
-                        weatherForcesdb.longitude = pedido.EnderecoEntrega.Longitude;
-
-                        _context.Entry(weatherForcesdb).State = EntityState.Modified;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[LOG] Erro ao atualizar WeatherForces: {ex.Message}");
-                    }
-
-
-                    return BadRequest($"O pedido #{pedido.Id} não possui um endereço de entrega válido.");
+﻿
+﻿                            var veiculo = await _context.Veiculos.FindAsync(request.VeiculoId);
+﻿
+﻿                            if (veiculo == null) return BadRequest("Veículo inválido.");
+﻿
+﻿                
+﻿
+﻿                            if (veiculo.DataProximaManutencao < DateTime.Today)
+﻿
+﻿                                return BadRequest("Veículo está com a manutenção atrasada.");
+﻿
+﻿                
+﻿
+﻿                            if (veiculo.Status != StatusVeiculo.Disponivel)
+﻿
+﻿                                return BadRequest("Veículo não está disponível.");
+﻿
+﻿                
+﻿
+﻿                            var motorista = await _context.Motoristas.FindAsync(request.MotoristaId);
+﻿
+﻿                            if (motorista == null) return BadRequest("Motorista inválido.");
+﻿
+﻿                
+﻿
+﻿                            var pedidos = await _context.Pedidos
+﻿
+﻿                                .Include(p => p.EnderecoEntrega)
+﻿
+﻿                                .Where(p => request.PedidosIds.Contains(p.Id) && p.Status == StatusPedido.Pendente)
+﻿
+﻿                                .ToListAsync();
+﻿
+﻿                
+﻿
+﻿                            if (pedidos.Count != request.PedidosIds.Count)
+﻿
+﻿                                return BadRequest("Alguns pedidos não foram encontrados ou não estão pendentes.");
+﻿
+﻿                
+﻿
+﻿                            foreach (var pedido in pedidos)
+﻿
+﻿                            {
+﻿
+﻿                                if (pedido.EnderecoEntregaId == 0 || pedido.EnderecoEntrega == null)
+﻿
+﻿                                {
+﻿
+﻿                                    return BadRequest($"O pedido #{pedido.Id} não possui um endereço de entrega válido.");
+﻿
+﻿                                }
+﻿
+﻿                            }
+﻿
+﻿                
+﻿
+﻿                            decimal pesoTotal = pedidos.Sum(p => p.PesoTotalKg);
+﻿
+﻿                            decimal volumeTotal = pedidos.Sum(p => p.VolumeTotalM3);
+﻿
+﻿                
+﻿
+﻿                            if (pesoTotal > veiculo.CapacidadeCarga)
+﻿
+﻿                                return BadRequest($"Peso excedido! Carga: {pesoTotal}kg. Veículo suporta: {veiculo.CapacidadeCarga}kg.");
+﻿
+﻿                
+﻿
+﻿                            if (volumeTotal > veiculo.CapacidadeVolume)
+﻿
+﻿                                return BadRequest($"Volume excedido! Carga: {volumeTotal}m3. Veículo suporta: {veiculo.CapacidadeVolume}m3.");
+﻿
+﻿                
+﻿
+﻿                            // --- Lógica Refatorada: Preparar tudo e salvar uma única vez ---
+﻿
+﻿                
+﻿
+﻿                            var rota = new Rota
+﻿
+﻿                            {
+﻿
+﻿                                VeiculoId = request.VeiculoId,
+﻿
+﻿                                MotoristaId = request.MotoristaId,
+﻿
+﻿                                Status = StatusRota.Planejada,
+﻿
+﻿                                DataRota = DateTime.Now,
+﻿
+﻿                                RotaPedidos = new List<RotaPedido>()
+﻿
+﻿                            };
+﻿
+﻿                
+﻿
+﻿                            int ordemContador = 1;
+﻿
+﻿                            foreach (var p in pedidos)
+﻿
+﻿                            {
+﻿
+﻿                                var rotaPedido = new RotaPedido
+﻿
+﻿                                {
+﻿
+﻿                                    Rota = rota,
+﻿
+﻿                                    PedidoId = p.Id,
+﻿
+﻿                                    OrdemEntrega = ordemContador++,
+﻿
+﻿                                    StatusEntrega = "Pendente"
+﻿
+﻿                                };
+﻿
+﻿                                rota.RotaPedidos.Add(rotaPedido);
+﻿
+﻿                
+﻿
+﻿                                p.Status = StatusPedido.EmRota; // Atualiza status do pedido
+﻿
+﻿                            }
+﻿
+﻿                
+﻿
+﻿                            veiculo.Status = StatusVeiculo.EmRota; // Atualiza status do veículo
+﻿
+﻿                
+﻿
+﻿                            _context.Rotas.Add(rota); // Adiciona a nova rota e suas RotaPedidos em cascata
+﻿
+﻿                
+﻿
+﻿                            try
+﻿
+﻿                            {
+﻿
+﻿                                await _context.SaveChangesAsync(); // Salva tudo em uma única transação
+﻿
+﻿                            }
+﻿
+﻿                            catch (DbUpdateException ex)
+﻿
+﻿                            {
+﻿
+﻿                                _logger.LogError(ex, "Erro ao salvar a nova rota e suas dependências.");
+﻿
+﻿                                return StatusCode(500, "Um erro ocorreu ao salvar os dados. Verifique os logs.");
+﻿
+﻿                            }
+﻿
+﻿                
+﻿
+﻿                            // --- LÓGICA DE GEOLOCALIZAÇÃO E CLIMA REATORADA ---
+﻿
+﻿                            await VerificarEAdicionarAlertaClimaticoAsync(rota);
+﻿
+﻿                
+﻿
+﻿                            return CreatedAtAction("GetRota", new { id = rota.Id }, rota);
+﻿
 ﻿                        }
-﻿        
-﻿                                                /*
-﻿                                                var janelasDoEndereco = await _context.JanelasHorarias
-﻿                                                    .Where(j => j.EnderecoClienteId == pedido.EnderecoEntrega.Id)
-﻿                                                    .ToListAsync();
-﻿                                
-﻿                                                if (!IsDentroDaJanela(dataRota, janelasDoEndereco))
-﻿                                                {
-﻿                                                    return BadRequest($"O pedido #{pedido.Id} para o cliente '{pedido.Cliente.NomeEmpresa}' não pode ser entregue na data de hoje ({dataRota:dd/MM/yyyy}), pois está fora da janela de horário do cliente.");
-﻿                                                }
-﻿                                                */﻿                    }
-﻿        
-﻿                    decimal pesoTotal = pedidos.Sum(p => p.PesoTotalKg);
-﻿                    decimal volumeTotal = pedidos.Sum(p => p.VolumeTotalM3);
-
-           
-
-            if (pesoTotal > veiculo.CapacidadeCarga)
-﻿                        return BadRequest($"Peso excedido! Carga: {pesoTotal}kg. Veículo suporta: {veiculo.CapacidadeCarga}kg.");
-﻿        
-﻿                    if (volumeTotal > veiculo.CapacidadeVolume)
-﻿                        return BadRequest($"Volume excedido! Carga: {volumeTotal}m3. Veículo suporta: {veiculo.CapacidadeVolume}m3.");
-﻿        
-﻿                    var rota = new Rota
-﻿                    {
-﻿                        VeiculoId = request.VeiculoId,
-﻿                        MotoristaId = request.MotoristaId,
-﻿                        Status = StatusRota.Planejada,
-﻿                        DataRota = dataRota
-﻿                    };
-﻿        
-﻿                    _context.Rotas.Add(rota);
-﻿                    await _context.SaveChangesAsync(); 
-﻿        
-﻿                    int ordemContador = 1;
-﻿        
-﻿                    foreach (var p in pedidos)
-﻿                    {
-﻿                        var rotaPedido = new RotaPedido
-﻿                        {
-﻿                            RotaId = rota.Id,
-﻿                            PedidoId = p.Id,
-﻿                            OrdemEntrega = ordemContador++,
-﻿                            StatusEntrega = "Pendente"
-﻿                        };
-﻿                        _context.RotaPedidos.Add(rotaPedido);
-                        rota.RotaPedidos.Add(rotaPedido);
-﻿        
-﻿                        p.Status = StatusPedido.EmRota;
-﻿                        _context.Entry(p).State = EntityState.Modified;
-﻿                    }
-﻿                    veiculo.Status = StatusVeiculo.EmRota;
-﻿                    _context.Entry(veiculo).State = EntityState.Modified;
-﻿        
-﻿                    await _context.SaveChangesAsync();
-﻿        
-﻿                    // --- LÓGICA DE GEOLOCALIZAÇÃO E CLIMA REATORADA ---
-﻿                    await VerificarEAdicionarAlertaClimaticoAsync(rota);
-﻿        
-﻿                    return CreatedAtAction("GetRota", new { id = rota.Id }, rota);
-﻿                }
 ﻿        
 ﻿                [HttpPut("{id}")]
 ﻿                public async Task<IActionResult> PutRota(int id, Rota rota)
@@ -416,67 +466,44 @@
 ﻿                }
 ﻿            }
 ﻿
-﻿            if (endereco.Latitude != 0 && endereco.Longitude != 0)
-﻿            {
-﻿                Console.WriteLine($"[LOG] Coordenadas encontradas. Chamando o serviço de clima para Lat: {endereco.Latitude}, Lon: {endereco.Longitude}");
-﻿                var weatherDto = await _weatherService.VerificarClimaAsync(endereco.Latitude, endereco.Longitude);
-
-                // Atualiza o objeto WeatherForces no banco de dados
-
-                try
-                {
-
-                    weatherForcesdb.Descricao = weatherDto.Descricao;
-                    weatherForcesdb.Temperatura = weatherDto.Temperatura;
-                    weatherForcesdb.SensacaoTermica = weatherDto.SensacaoTermica;
-                    weatherForcesdb.Icone = weatherDto.Icone;
-                    weatherForcesdb.TipoAlerta = weatherDto.TipoAlerta;
-                    weatherForcesdb.Severidade = weatherDto.Severidade;
-                    weatherForcesdb.latitude = endereco.Latitude;
-                    weatherForcesdb.longitude = endereco.Longitude;
-
-                    _context.Entry(weatherForcesdb).State = EntityState.Modified;
-                }catch (Exception ex)
-                {
-                    Console.WriteLine($"[LOG] Erro ao atualizar WeatherForces: {ex.Message}");
-                }
-
-
-
-                if (weatherDto != null)
-﻿                {
-﻿                    Console.WriteLine($"[LOG] Serviço de clima retornou DTO: Descricao={weatherDto.Descricao}, Temp={weatherDto.Temperatura}, Alerta={weatherDto.TipoAlerta ?? "N/A"}");
-﻿
-﻿                    if (!rota.AlertasClimaticos.Any(a => a.Descricao == weatherDto.Descricao && a.Temperatura == weatherDto.Temperatura))
-﻿                    {
-﻿                        var novoAlerta = new AlertaClimatico
+﻿                        if (endereco.Latitude != 0 && endereco.Longitude != 0)
 ﻿                        {
-﻿                            RotaId = rota.Id,
-﻿                            Descricao = weatherDto.Descricao,
-﻿                            Temperatura = weatherDto.Temperatura,
-﻿                            SensacaoTermica = weatherDto.SensacaoTermica,
-﻿                            Icone = weatherDto.Icone,
-﻿                            TipoAlerta = weatherDto.TipoAlerta,
-﻿                            Severidade = weatherDto.Severidade
-﻿                        };
-﻿
-﻿                        _context.AlertasClimaticos.Add(novoAlerta);
-﻿                        await _context.SaveChangesAsync();
-﻿
-﻿                        rota.AlertasClimaticos.Add(novoAlerta);
-﻿                        Console.WriteLine("[LOG] Novo AlertaClimatico salvo e adicionado à rota.");
-﻿                    }
-﻿                    else
-﻿                    {
-﻿                        Console.WriteLine("[LOG] Alerta de clima idêntico já existe para esta rota. Nenhum novo alerta foi adicionado.");
-﻿                    }
-﻿                }
-﻿                else
-﻿                {
-﻿                    Console.WriteLine("[LOG] Serviço de clima retornou NULL.");
-﻿                }
-﻿            }
-﻿            else
+﻿                            Console.WriteLine($"[LOG] Coordenadas encontradas. Chamando o serviço de clima para Lat: {endereco.Latitude}, Lon: {endereco.Longitude}");
+﻿                            var weatherDto = await _weatherService.VerificarClimaAsync(endereco.Latitude, endereco.Longitude);
+﻿            
+﻿                            if (weatherDto != null)
+﻿                            {
+﻿                                Console.WriteLine($"[LOG] Serviço de clima retornou DTO: Descricao={weatherDto.Descricao}, Temp={weatherDto.Temperatura}, Alerta={weatherDto.TipoAlerta ?? "N/A"}");
+﻿            
+﻿                                if (!rota.AlertasClimaticos.Any(a => a.Descricao == weatherDto.Descricao && a.Temperatura == weatherDto.Temperatura))
+﻿                                {
+﻿                                    var novoAlerta = new AlertaClimatico
+﻿                                    {
+﻿                                        RotaId = rota.Id,
+﻿                                        Descricao = weatherDto.Descricao,
+﻿                                        Temperatura = weatherDto.Temperatura,
+﻿                                        SensacaoTermica = weatherDto.SensacaoTermica,
+﻿                                        Icone = weatherDto.Icone,
+﻿                                        TipoAlerta = weatherDto.TipoAlerta,
+﻿                                        Severidade = weatherDto.Severidade
+﻿                                    };
+﻿            
+﻿                                    _context.AlertasClimaticos.Add(novoAlerta);
+﻿                                    await _context.SaveChangesAsync();
+﻿            
+﻿                                    rota.AlertasClimaticos.Add(novoAlerta);
+﻿                                    Console.WriteLine("[LOG] Novo AlertaClimatico salvo e adicionado à rota.");
+﻿                                }
+﻿                                else
+﻿                                {
+﻿                                    Console.WriteLine("[LOG] Alerta de clima idêntico já existe para esta rota. Nenhum novo alerta foi adicionado.");
+﻿                                }
+﻿                            }
+﻿                            else
+﻿                            {
+﻿                                Console.WriteLine("[LOG] Serviço de clima retornou NULL.");
+﻿                            }
+﻿                        }﻿            else
 ﻿            {
 ﻿                Console.WriteLine("[LOG] Pulei a verificação de clima porque o endereço não tem coordenadas.");
 ﻿            }
