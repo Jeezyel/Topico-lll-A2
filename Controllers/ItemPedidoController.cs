@@ -36,6 +36,15 @@ namespace A2.Controllers
             return await query.ToListAsync();
         }
 
+        [HttpGet("quantidade")] // Define uma rota específica, ex: /api/clientes/quantidade
+        public async Task<ActionResult<int>> GetQuantidadeItensPedido()
+        {
+            // O CountAsync é mais eficiente pois executa a contagem direto no banco
+            var quantidade = await _context.ItensPedido.CountAsync();
+
+            return Ok(quantidade);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ItemPedido>> GetItemPedido(int id)
         {
